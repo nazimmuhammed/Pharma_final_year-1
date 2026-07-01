@@ -6,6 +6,7 @@ import LoginPage from './Pages/LoginPage'
 import DrugRegistration from './Pages/DrugRegistration'
 import Profile from './Pages/Profile'
 import HowItWorks from './Pages/HowItWorks'
+import VerifyDrugPage from './Pages/VerifyDrugPage'
 
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
       <Route path="/login" element={<LoginPage/>}/>
       <Route path='/drug-registration' element={<DrugRegistration/>}/>
       <Route path='/profile' element={<Profile/>}/>
+      <Route path='/verify-drug' element={<VerifyDrugPage/>}/>
 
 
 

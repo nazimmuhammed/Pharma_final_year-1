@@ -26,6 +26,12 @@ const initialState = {
    verificationResult: null,
 
    verificationLoading: false,
+
+   transferLoading: false,
+
+   transferSuccess: false,
+
+   transferError: null,
 }
 
 
@@ -131,6 +137,39 @@ export const verifyDrug = createAsyncThunk(
             error.response?.data ||
 
             "Verification failed"
+         );
+      }
+   }
+);
+
+export const transferDrugOwnership =
+createAsyncThunk(
+
+   "drug/transfer",
+
+   async (transferData, thunkAPI) => {
+
+      try {
+
+         const response =
+            await axiosInstance.post(
+
+               "/api/scans/transfer",
+
+               transferData
+            );
+
+         return response.data;
+
+      }
+
+      catch(error){
+
+         return thunkAPI.rejectWithValue(
+
+            error.response?.data?.message ||
+
+            "Transfer failed"
          );
       }
    }
@@ -311,6 +350,41 @@ const DrugSlice = createSlice({
         (state) => {
 
             state.verificationLoading = false;
+        }
+        )
+
+
+        .addCase(
+        transferDrugOwnership.pending,
+
+        (state) => {
+
+            state.transferLoading = true;
+
+            state.transferError = null;
+        }
+        )
+
+        .addCase(
+        transferDrugOwnership.fulfilled,
+
+        (state) => {
+
+            state.transferLoading = false;
+
+            state.transferSuccess = true;
+        }
+        )
+
+        .addCase(
+        transferDrugOwnership.rejected,
+
+        (state, action) => {
+
+            state.transferLoading = false;
+
+            state.transferError =
+                action.payload;
         }
         )
     }

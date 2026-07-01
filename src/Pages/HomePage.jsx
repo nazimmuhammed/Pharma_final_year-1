@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
 import {
   MdVerifiedUser,
@@ -263,7 +264,10 @@ const HeroCarousel = () => {
   );
 };
 
+
+
 export default function HomePage() {
+  const navigate = useNavigate();
    
   return (
    
@@ -301,11 +305,30 @@ export default function HomePage() {
                 </p>
 
                 <div className="flex gap-5 mt-10">
-                <button className="bg-cyan-400 hover:bg-cyan-300 transition-all text-black px-8 py-4 rounded-2xl flex items-center gap-2 font-semibold text-lg">
-                    <MdVerifiedUser />
-                    Verify a Drug
-                </button>
+                <button
+                      type="button"
 
+                      onClick={() =>
+                          navigate("/verify-drug")
+                      }
+
+                      className="
+                          bg-cyan-400
+                          hover:bg-cyan-300
+                          transition-all
+                          text-black
+                          px-8 py-4
+                          rounded-2xl
+                          flex items-center gap-2
+                          font-semibold text-lg
+                      "
+                  >
+
+                      <MdVerifiedUser />
+
+                      Verify a Drug
+
+                  </button>
                 <button className="border border-cyan-400/30 bg-white/5 hover:bg-white/10 transition-all px-8 py-4 rounded-2xl flex items-center gap-2 font-semibold text-lg">
                     <MdOutlineInventory2 />
                     Register a Drug

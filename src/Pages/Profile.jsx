@@ -27,6 +27,10 @@ import { getProfile } from "../Redux/Slices/AuthSlice";
 import { getMyDrugs } from "../Redux/Slices/DrugSlice";
 import { Html5QrcodeScanner,Html5Qrcode } from "html5-qrcode";
 import { verifyDrug } from "../Redux/Slices/DrugSlice";
+import {
+   transferDrugOwnership
+}
+from "../Redux/Slices/DrugSlice";
 
 
 
@@ -405,7 +409,7 @@ const MetricsStrip = ({ role }) => {
 // ════════════════════════════════════════════════════════
 
 // ─── Manufacturer ─────────────────────────────────────────
-const ManufacturerView = ({drugs,handleViewDetails,handleShowQR,handleVerifyDrug}) => (
+const ManufacturerView = ({drugs,handleViewDetails,handleShowQR,handleVerifyDrug,handleTransferDrug}) => (
   <div className="flex flex-col gap-6">
     {/* Registered Drugs table */}
     <TableCard title="Registered Drugs" action="View All">
@@ -440,7 +444,7 @@ const ManufacturerView = ({drugs,handleViewDetails,handleShowQR,handleVerifyDrug
               <TD>
                 <div className="flex gap-1.5 flex-wrap">
                   <ActionBtn icon={MdVerifiedUser} label="Verify" color="cyan" onClick={()=>handleVerifyDrug(d)} />
-                  <ActionBtn icon={BiTransfer} label="Transfer" color="purple" />
+                  <ActionBtn icon={BiTransfer} label="Transfer" color="purple" onClick={()=>handleTransferDrug(d)} />
                   <ActionBtn icon={MdQrCode2} label="QR Code" color="green" onClick={()=>handleShowQR(d)} />
                   <ActionBtn icon={MdInfo} label="Details" color="amber" onClick={()=>handleViewDetails(d)}/>
                 </div>
@@ -463,7 +467,7 @@ const ManufacturerView = ({drugs,handleViewDetails,handleShowQR,handleVerifyDrug
             </div>
             <div className="flex gap-1 flex-wrap">
               <ActionBtn icon={MdVerifiedUser} label="Verify" color="cyan" onClick={()=>handleVerifyDrug(d)} />
-              <ActionBtn icon={BiTransfer} label="Transfer" color="purple" />
+              <ActionBtn icon={BiTransfer} label="Transfer" color="purple" onClick={()=>handleTransferDrug(d)} />
               <ActionBtn icon={MdQrCode2} label="QR Code" color="green" onClick={()=>handleShowQR(d)} />
               <ActionBtn icon={MdInfo} label="Details" color="amber" onClick={()=>handleViewDetails(d)}/>
             </div>
@@ -767,6 +771,30 @@ export default function Profile() {
   const [showVerificationResult,
     setShowVerificationResult] =
     useState(false);
+
+  const [invalidQRMessage,
+    setInvalidQRMessage] =
+    useState("");
+
+  const [showTransferModal,
+  setShowTransferModal] =
+    useState(false);
+
+  const [selectedTransferDrug,
+  setSelectedTransferDrug] =
+    useState(null);
+
+  const [transferForm,
+  setTransferForm] =
+    useState({
+
+        toUserEmail: "",
+
+        location: {
+          latitude: "",
+          longitude: "",
+        }
+    });
    
    
 
@@ -792,6 +820,91 @@ export default function Profile() {
 
    setShowVerifyModal(true);
   };
+
+  const handleTransferDrug = (drug) => {
+ 
+
+   setSelectedTransferDrug(drug);
+
+   setShowTransferModal(true);
+};
+
+  const handleTransferInput =
+  (e) => {
+
+   const {
+      name,
+      value
+   } = e.target;
+
+   setTransferForm((prev) => ({
+
+      ...prev,
+
+      [name]: value
+   }));
+};
+const handleConfirmTransfer =
+async () => {
+
+   if(
+      !transferForm.toUserEmail
+   ){
+      return;
+   }
+
+   try {
+
+      const payload = {
+
+         drugId:
+            selectedTransferDrug.drugId,
+
+         toUserEmail:
+            transferForm.toUserEmail,
+
+         location: {
+            latitude: 12.9716,
+            longitude: 77.5946,
+         }
+      };
+
+      const result =
+         await dispatch(
+
+            transferDrugOwnership(payload)
+
+         ).unwrap();
+
+      console.log(
+         "Transfer success:",
+         result
+      );
+
+      // close modal
+      setShowTransferModal(false);
+
+      // reset form
+      setTransferForm({
+
+         toUserEmail: "",
+
+         location: {
+            latitude: "",
+            longitude: "",
+         }
+      });
+
+      // refresh drugs
+      dispatch(getMyDrugs());
+
+   }
+
+   catch(error){
+
+      console.error(error);
+   }
+};
 
   const {
 
@@ -850,10 +963,9 @@ async (e) => {
 
       if(!drugId){
 
-         alert(
-            "Invalid QR Code"
-         );
-
+        setInvalidQRMessage(
+          "Unable to verify uploaded QR image."
+        );
          return;
       }
 
@@ -872,6 +984,11 @@ async (e) => {
          "Failed to scan QR image"
       );
    }
+};
+
+const isDrugExpired = (date) => {
+
+   return new Date(date) < new Date();
 };
 
 
@@ -929,8 +1046,8 @@ async (e) => {
 
             if(!drugId){
 
-              alert(
-                  "Invalid QR Code"
+              setInvalidQRMessage(
+                "Invalid pharmaceutical QR code detected."
               );
 
               return;
@@ -952,9 +1069,9 @@ async (e) => {
 
             console.error(error);
 
-            alert(
-              "Invalid QR format"
-            );
+            setInvalidQRMessage(
+            "Corrupted or unsupported QR format."
+          );
         }
       },
 
@@ -981,7 +1098,7 @@ async (e) => {
 }, [verificationResult]);
 
   const roleViews = {
-    manufacturer: <ManufacturerView drugs={drugs} handleViewDetails={handleViewDetails} handleShowQR={handleShowQR} handleVerifyDrug={handleVerifyDrug}/>,
+    manufacturer: <ManufacturerView drugs={drugs} handleViewDetails={handleViewDetails} handleShowQR={handleShowQR} handleVerifyDrug={handleVerifyDrug} handleTransferDrug={handleTransferDrug} />,
     distributor:  <DistributorView />,
     retailer:     <RetailerView />,
     inspector:    <InspectorView />,
@@ -1780,6 +1897,133 @@ async (e) => {
     }
 
     {
+    invalidQRMessage && (
+
+    <div className="
+    fixed inset-0 z-[80]
+    flex items-center justify-center
+    bg-black/80 backdrop-blur-sm
+    px-4
+    ">
+
+      <div className="
+          relative
+          w-full max-w-md
+          rounded-3xl
+          border border-red-500/20
+          bg-[#120b0b]
+          p-7
+          shadow-[0_0_70px_rgba(239,68,68,0.18)]
+          overflow-hidden
+      ">
+
+          {/* glow */}
+          <div className="
+            absolute inset-0
+            bg-[radial-gradient(circle_at_top,rgba(239,68,68,0.15),transparent_45%)]
+          " />
+
+          {/* close */}
+          <button
+            onClick={() =>
+                setInvalidQRMessage("")
+            }
+            className="
+                absolute top-4 right-4
+                text-gray-400 hover:text-white
+                text-xl z-10
+            "
+          >
+            ✕
+          </button>
+
+          <div className="
+            relative z-10
+            flex flex-col items-center
+            text-center
+          ">
+
+            {/* icon */}
+            <div className="
+                w-24 h-24
+                rounded-full
+                bg-red-500/10
+                border border-red-500/20
+                flex items-center justify-center
+                mb-6
+            ">
+
+                <MdDangerous
+                  size={50}
+                  className="text-red-400"
+                />
+
+            </div>
+
+            {/* title */}
+            <h2 className="
+                text-3xl font-bold
+                text-red-400
+            ">
+                Verification Failed
+            </h2>
+
+            {/* message */}
+            <p className="
+                mt-4
+                text-gray-300
+                leading-relaxed
+            ">
+                {invalidQRMessage}
+            </p>
+
+            {/* warning box */}
+            <div className="
+                mt-6
+                rounded-2xl
+                border border-red-500/20
+                bg-red-500/5
+                p-4
+                text-sm text-red-200
+            ">
+
+                This QR code may be invalid,
+                tampered with, or not registered
+                in the pharmaceutical blockchain
+                verification system.
+
+            </div>
+
+            {/* button */}
+            <button
+                onClick={() =>
+                  setInvalidQRMessage("")
+                }
+                className="
+                  mt-7
+                  rounded-xl
+                  bg-red-500/20
+                  border border-red-500/20
+                  px-6 py-3
+                  text-red-300
+                  font-semibold
+                  hover:bg-red-500/30
+                  transition-all
+                "
+            >
+                Close Warning
+            </button>
+
+          </div>
+
+      </div>
+
+    </div>
+
+    )
+    }
+
+    {
     showVerificationResult &&
     verificationResult && (
 
@@ -1907,6 +2151,59 @@ async (e) => {
           {
           verificationResult.drug && (
 
+          <>
+          {
+            isDrugExpired(
+              verificationResult.drug.expiryDate
+            ) && (
+
+          <div className="
+            md:col-span-2
+            rounded-2xl
+            border border-red-500/20
+            bg-red-500/10
+            p-5
+            flex items-center gap-4
+          ">
+
+            <div className="
+                w-14 h-14
+                rounded-full
+                bg-red-500/10
+                flex items-center justify-center
+                shrink-0
+            ">
+
+                <MdDangerous
+                  size={32}
+                  className="text-red-400"
+                />
+
+            </div>
+
+            <div>
+
+                <h3 className="
+                  text-red-400
+                  text-lg font-bold
+                ">
+                  Expired Drug Warning
+                </h3>
+
+                <p className="
+                  text-gray-300 mt-1
+                ">
+                  This pharmaceutical product
+                  has expired and should not
+                  be consumed or distributed.
+                </p>
+
+            </div>
+
+          </div>
+
+          )
+          }
           <div className="
             grid md:grid-cols-2 gap-5
           ">
@@ -1958,6 +2255,7 @@ async (e) => {
             />
 
           </div>
+          </>
 
           )
           }
@@ -2064,6 +2362,327 @@ async (e) => {
                   : "No Anomalies"
                   }
                 </h3>
+
+            </div>
+
+          </div>
+
+      </div>
+
+    </div>
+
+    )
+    }
+
+    {
+   showTransferModal &&
+   selectedTransferDrug && (
+
+    <div className="
+    fixed inset-0 z-[70]
+    flex items-center justify-center
+    bg-black/80 backdrop-blur-sm
+    px-4
+    ">
+
+      <div className="
+          relative
+          w-full max-w-2xl
+          rounded-3xl
+          border border-purple-500/20
+          bg-[#07111f]
+          p-6
+          shadow-[0_0_70px_rgba(168,85,247,0.18)]
+          overflow-hidden
+      ">
+
+          {/* glow */}
+          <div className="
+            absolute inset-0
+            bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.15),transparent_45%)]
+          " />
+
+          {/* close */}
+          <button
+            onClick={() =>
+                setShowTransferModal(false)
+            }
+
+            className="
+                absolute top-4 right-4
+                text-gray-400 hover:text-white
+                text-xl z-10
+            "
+          >
+            ✕
+          </button>
+
+          <div className="
+            relative z-10
+          ">
+
+            {/* title */}
+            <div className="
+                flex items-center gap-3 mb-8
+            ">
+
+                <div className="
+                  w-14 h-14 rounded-2xl
+                  bg-purple-500/10
+                  border border-purple-500/20
+                  flex items-center justify-center
+                ">
+
+                  <BiTransfer
+                      size={30}
+                      className="text-purple-400"
+                  />
+
+                </div>
+
+                <div>
+
+                  <h2 className="
+                      text-3xl font-bold
+                      text-white
+                  ">
+                      Transfer Ownership
+                  </h2>
+
+                  <p className="
+                      text-gray-400 mt-1
+                  ">
+                      Blockchain-secured drug transfer
+                  </p>
+
+                </div>
+
+            </div>
+
+            {/* drug info */}
+            <div className="
+                rounded-2xl
+                border border-white/10
+                bg-white/5
+                p-5
+                mb-6
+            ">
+
+                <div className="
+                  flex items-center justify-between
+                ">
+
+                  <div>
+
+                      <p className="
+                        text-sm text-purple-400
+                      ">
+                        Selected Drug
+                      </p>
+
+                      <h3 className="
+                        text-xl font-bold
+                        text-white mt-2
+                      ">
+                        {selectedTransferDrug.name}
+                      </h3>
+
+                      <p className="
+                        text-gray-400 mt-1
+                      ">
+                        {
+                        selectedTransferDrug.drugId
+                        }
+                      </p>
+
+                  </div>
+
+                  <div className="
+                      px-4 py-2 rounded-full
+                      bg-green-500/10
+                      border border-green-500/20
+                      text-green-400 text-sm
+                  ">
+                      Blockchain Active
+                  </div>
+
+                </div>
+
+            </div>
+
+            {/* form */}
+            <div className="
+                space-y-5
+            ">
+
+                {/* recipient */}
+                <div>
+
+                  <label className="
+                      block text-sm text-gray-300 mb-2
+                  ">
+                      Recipient Email
+                  </label>
+
+                  <input
+                      type="email"
+
+                      name="toUserEmail"
+
+                      value={
+                        transferForm.toUserEmail
+                      }
+
+                      onChange={
+                        handleTransferInput
+                      }
+
+                      placeholder="
+                      Enter recipient email
+                      "
+
+                      className="
+                        w-full
+                        rounded-2xl
+                        border border-purple-500/20
+                        bg-[#0b1628]
+                        px-5 py-4
+                        text-white
+                        outline-none
+                        focus:border-purple-400
+                        transition-all
+                      "
+                  />
+
+                </div>
+
+                {/* blockchain animation */}
+                <div className="
+                  rounded-2xl
+                  border border-purple-500/20
+                  bg-purple-500/5
+                  p-5
+                ">
+
+                  <div className="
+                      flex items-center justify-between
+                  ">
+
+                      <div className="
+                        flex items-center gap-4
+                      ">
+
+                        <div className="
+                            w-12 h-12 rounded-full
+                            bg-cyan-500/10
+                            flex items-center justify-center
+                        ">
+
+                            <MdVerifiedUser
+                              size={24}
+                              className="text-cyan-400"
+                            />
+
+                        </div>
+
+                        <motion.div
+
+                            animate={{
+                              x: [0, 10, 0]
+                            }}
+
+                            transition={{
+                              duration: 1.5,
+                              repeat: Infinity
+                            }}
+
+                        >
+
+                            <BiTransfer
+                              size={28}
+                              className="text-purple-400"
+                            />
+
+                        </motion.div>
+
+                        <div className="
+                            w-12 h-12 rounded-full
+                            bg-green-500/10
+                            flex items-center justify-center
+                        ">
+
+                            <MdOutlineInventory2
+                              size={24}
+                              className="text-green-400"
+                            />
+
+                        </div>
+
+                      </div>
+
+                      <div className="
+                        text-right
+                      ">
+
+                        <p className="
+                            text-sm text-purple-300
+                        ">
+                            Smart Contract
+                        </p>
+
+                        <p className="
+                            text-xs text-gray-400 mt-1
+                        ">
+                            Ownership transfer
+                            will be recorded
+                            on blockchain
+                        </p>
+
+                      </div>
+
+                  </div>
+
+                </div>
+
+                {/* buttons */}
+                <div className="
+                  flex justify-end gap-4 pt-4
+                ">
+
+                  <button
+
+                      onClick={() =>
+                        setShowTransferModal(false)
+                      }
+
+                      className="
+                        px-6 py-3 rounded-xl
+                        border border-white/10
+                        text-gray-300
+                        hover:bg-white/5
+                        transition-all
+                      "
+                  >
+                      Cancel
+                  </button>
+
+                  <button
+
+                      onClick={handleConfirmTransfer}
+                      className="
+                        px-6 py-3 rounded-xl
+                        bg-purple-500/20
+                        border border-purple-500/20
+                        text-purple-300
+                        font-semibold
+                        hover:bg-purple-500/30
+                        transition-all
+                      "
+                  >
+                      Confirm Transfer
+                  </button>
+
+                </div>
 
             </div>
 
