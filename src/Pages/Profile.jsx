@@ -31,17 +31,14 @@ import {
    transferDrugOwnership
 }
 from "../Redux/Slices/DrugSlice";
+import jsPDF from "jspdf";
+
+import autoTable from "jspdf-autotable";
 
 
 
 
-// ─── Mock data ────────────────────────────────────────────
-const DRUGS_MFG = [
-  { id:1, name:"Amoxicillin 250mg", type:"Antibiotic", batch:"BATCH-2026-002", expiry:"27 Jun 2028", qty:"67 Units", stage:"Manufactured", blockchain:"Verified", risk:0, riskLabel:"Low" },
-  { id:2, name:"Paracetamol 500mg", type:"Pain Reliever", batch:"BATCH-2026-001", expiry:"15 May 2027", qty:"120 Units", stage:"Transferred", blockchain:"Verified", risk:0, riskLabel:"Low" },
-  { id:3, name:"Ciprofloxacin 500mg",type:"Antibiotic", batch:"BATCH-2026-003", expiry:"10 Aug 2028", qty:"45 Units", stage:"In Transit", blockchain:"Verified", risk:15, riskLabel:"Low" },
-  { id:4, name:"Azithromycin 250mg", type:"Antibiotic", batch:"BATCH-2026-004", expiry:"20 Dec 2027", qty:"80 Units", stage:"Manufactured", blockchain:"Pending", risk:25, riskLabel:"Medium" },
-];
+
 
 const ACTIVITY = [
   { icon:<MdCheckCircle size={15}/>, color:"text-green-400", msg:"Drug registered: Amoxicillin 250mg (BATCH-2026-002)", time:"29 Jun 2026, 03:35 PM" },
@@ -50,24 +47,7 @@ const ACTIVITY = [
   { icon:<MdWarning size={15}/>, color:"text-amber-400", msg:"Risk analysis completed for Ciprofloxacin 500mg", time:"29 Jun 2026, 10:15 AM" },
 ];
 
-const INSPECTOR_DRUGS = [
-  { id:1, name:"Amoxicillin 250mg", mfg:"Gagan Pharma",  risk:0,  riskLabel:"Low",    anomaly:"Normal",    verified:true },
-  { id:2, name:"Metformin 500mg",   mfg:"MedCorp Ltd",   risk:72, riskLabel:"High",   anomaly:"Anomaly",   verified:false },
-  { id:3, name:"Atorvastatin 10mg", mfg:"HealthPlus",    risk:28, riskLabel:"Medium", anomaly:"Suspicious",verified:true },
-  { id:4, name:"Pantoprazole 40mg", mfg:"Gagan Pharma",  risk:5,  riskLabel:"Low",    anomaly:"Normal",    verified:true },
-];
 
-const SHIPMENTS = [
-  { id:"SHP-001", drug:"Amoxicillin 250mg", from:"Gagan Pharma", qty:"200 Units", status:"In Transit", eta:"30 Jun 2026" },
-  { id:"SHP-002", drug:"Paracetamol 500mg", from:"MedCorp",       qty:"500 Units", status:"Pending",    eta:"01 Jul 2026" },
-  { id:"SHP-003", drug:"Ibuprofen 400mg",   from:"HealthPlus",    qty:"150 Units", status:"Delivered",  eta:"28 Jun 2026" },
-];
-
-const RETAIL_STOCK = [
-  { id:1, name:"Amoxicillin 250mg", batch:"BATCH-2026-002", stock:"67 Units", verified:true,  scan:"Authentic" },
-  { id:2, name:"Paracetamol 500mg", batch:"BATCH-2026-001", stock:"120 Units", verified:true, scan:"Authentic" },
-  { id:3, name:"Ibuprofen 400mg",   batch:"BATCH-2026-005", stock:"30 Units",  verified:false, scan:"Unverified" },
-];
 
 // ─── Tiny sparkline ───────────────────────────────────────
 const Sparkline = ({ color, values }) => {
@@ -463,7 +443,7 @@ const ManufacturerView = ({drugs,handleViewDetails,handleShowQR,handleVerifyDrug
                 <p className="text-sm font-semibold text-white">{d.name}</p>
                 <p className="text-[11px] text-gray-600">{d.type} · {d.batchNumber}</p>
               </div>
-              <StatusBadge label={d.stage} />
+              <StatusBadge label={d.currentStage} />
             </div>
             <div className="flex gap-1 flex-wrap">
               <ActionBtn icon={MdVerifiedUser} label="Verify" color="cyan" onClick={()=>handleVerifyDrug(d)} />
@@ -526,201 +506,854 @@ const ManufacturerView = ({drugs,handleViewDetails,handleShowQR,handleVerifyDrug
 );
 
 // ─── Inspector ────────────────────────────────────────────
-const InspectorView = () => (
-  <div className="flex flex-col gap-6">
-    <TableCard title="Drug Verification Queue" action="View All">
-      <table className="w-full hidden md:table">
-        <thead>
-          <tr className="border-b border-white/6">
-            <TH>Drug</TH><TH>Manufacturer</TH><TH>Risk Score</TH>
-            <TH>Anomaly Status</TH><TH>Blockchain Verified</TH><TH>Action</TH>
-          </tr>
-        </thead>
-        <tbody>
-          {INSPECTOR_DRUGS.map((d) => (
-            <TR key={d.id}>
-              <TD>
-                <div className="flex items-center gap-2.5">
-                  <DrugIcon />
-                  <p className="text-sm font-semibold text-white">{d.name}</p>
-                </div>
-              </TD>
-              <TD><span className="text-xs text-gray-400">{d.mfg}</span></TD>
-              <TD><RiskPill score={d.risk} label={d.riskLabel} /></TD>
-              <TD><StatusBadge label={d.anomaly} /></TD>
-              <TD><BlockchainBadge status={d.verified ? "Verified" : "Pending"} /></TD>
-              <TD>
-                <div className="flex gap-1.5">
-                  <ActionBtn icon={MdVerifiedUser} label="Verify" color="cyan" />
-                  <ActionBtn icon={BiNetworkChart} label="Analyze" color="amber" />
-                </div>
-              </TD>
-            </TR>
-          ))}
-        </tbody>
-      </table>
-      <div className="md:hidden divide-y divide-white/5">
-        {INSPECTOR_DRUGS.map((d) => (
-          <div key={d.id} className="p-4 space-y-2">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <DrugIcon />
-              <p className="text-sm font-semibold text-white">{d.name}</p>
-              <StatusBadge label={d.anomaly} />
-              <RiskPill score={d.risk} label={d.riskLabel} />
-            </div>
-            <div className="flex gap-1.5">
-              <ActionBtn icon={MdVerifiedUser} label="Verify" color="cyan" />
-              <ActionBtn icon={BiNetworkChart} label="Analyze" color="amber" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </TableCard>
+// ─── Inspector ────────────────────────────────────────────
+const InspectorView = ({
+   drugs,
+   handleVerifyDrug,
+   handleViewDetails
+}) => (
 
-    {/* Quick Actions */}
-    <div>
-      <h2 className="text-base font-bold text-cyan-400 mb-4 px-1">Quick Actions</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <QuickCard icon={MdVerifiedUser}   label="Verify Drug"           sub="Run on-chain check"       color="cyan"   delay={0.1} />
-        <QuickCard icon={BiNetworkChart}   label="Analyze Risk"          sub="AI anomaly detection"     color="amber"  delay={0.15} />
-        <QuickCard icon={MdDescription}    label="Inspection Report"     sub="Generate PDF report"      color="purple" delay={0.2} />
-        <QuickCard icon={FaCube}           label="Blockchain Audit"      sub="Full chain audit trail"   color="green"  delay={0.25} />
+<div className="flex flex-col gap-6">
+
+   <TableCard
+      title="Drug Verification Queue"
+      action="View All"
+   >
+
+      <table className="w-full hidden md:table">
+
+         <thead>
+
+            <tr className="border-b border-white/6">
+
+               <TH>Drug</TH>
+
+               <TH>Manufacturer</TH>
+
+               <TH>Risk Score</TH>
+
+               <TH>Anomaly Status</TH>
+
+               <TH>Blockchain Verified</TH>
+
+               <TH>Action</TH>
+
+            </tr>
+
+         </thead>
+
+         <tbody>
+
+            {drugs.map((d) => (
+
+               <TR key={d._id}>
+
+                  <TD>
+
+                     <div className="
+                        flex items-center gap-2.5
+                     ">
+
+                        <DrugIcon />
+
+                        <p className="
+                           text-sm font-semibold text-white
+                        ">
+                           {d.name}
+                        </p>
+
+                     </div>
+
+                  </TD>
+
+                  <TD>
+
+                     <span className="
+                        text-xs text-gray-400
+                     ">
+
+                        {
+                        d.manufacturer?.name ||
+                        "Unknown"
+                        }
+
+                     </span>
+
+                  </TD>
+
+                  <TD>
+
+                     <RiskPill
+                        score={
+                           d.latestRiskScore || 0
+                        }
+                        label={
+                           d.latestRiskScore > 70
+                           ? "High"
+                           : d.latestRiskScore > 30
+                           ? "Medium"
+                           : "Low"
+                        }
+                     />
+
+                  </TD>
+
+                  <TD>
+
+                     <StatusBadge
+                        label={
+                           d.hasAnomaly
+                           ? "Anomaly"
+                           : "Normal"
+                        }
+                     />
+
+                  </TD>
+
+                  <TD>
+
+                     <BlockchainBadge
+                        status={
+                           d.isBlockchainVerified
+                           ? "Verified"
+                           : "Pending"
+                        }
+                     />
+
+                  </TD>
+
+                  <TD>
+
+                     <div className="
+                        flex gap-1.5 flex-wrap
+                     ">
+
+                        <ActionBtn
+                           icon={MdVerifiedUser}
+                           label="Verify"
+                           color="cyan"
+                           onClick={() =>
+                              handleVerifyDrug(d)
+                           }
+                        />
+
+                        <ActionBtn
+                           icon={MdInfo}
+                           label="Details"
+                           color="amber"
+                           onClick={() =>
+                              handleViewDetails(d)
+                           }
+                        />
+
+                     </div>
+
+                  </TD>
+
+               </TR>
+
+            ))}
+
+         </tbody>
+
+      </table>
+
+      {/* mobile */}
+      <div className="
+         md:hidden divide-y divide-white/5
+      ">
+
+         {drugs.map((d) => (
+
+            <div
+               key={d._id}
+               className="p-4 space-y-2"
+            >
+
+               <div className="
+                  flex items-center gap-2.5 flex-wrap
+               ">
+
+                  <DrugIcon />
+
+                  <p className="
+                     text-sm font-semibold text-white
+                  ">
+                     {d.name}
+                  </p>
+
+                  <StatusBadge
+                     label={
+                        d.hasAnomaly
+                        ? "Anomaly"
+                        : "Normal"
+                     }
+                  />
+
+                  <RiskPill
+                     score={
+                        d.latestRiskScore || 0
+                     }
+                     label={
+                        d.latestRiskScore > 70
+                        ? "High"
+                        : d.latestRiskScore > 30
+                        ? "Medium"
+                        : "Low"
+                     }
+                  />
+
+               </div>
+
+               <div className="
+                  flex gap-1.5
+               ">
+
+                  <ActionBtn
+                     icon={MdVerifiedUser}
+                     label="Verify"
+                     color="cyan"
+                     onClick={() =>
+                        handleVerifyDrug(d)
+                     }
+                  />
+
+                  <ActionBtn
+                     icon={MdInfo}
+                     label="Details"
+                     color="amber"
+                     onClick={() =>
+                        handleViewDetails(d)
+                     }
+                  />
+
+               </div>
+
+            </div>
+
+         ))}
+
       </div>
-    </div>
-  </div>
+
+   </TableCard>
+
+   {/* Quick Actions */}
+   <div>
+
+      <h2 className="
+         text-base font-bold
+         text-cyan-400 mb-4 px-1
+      ">
+         Quick Actions
+      </h2>
+
+      <div className="
+         grid grid-cols-2 sm:grid-cols-4 gap-3
+      ">
+
+         <QuickCard
+            icon={MdVerifiedUser}
+            label="Verify Drug"
+            sub="Run on-chain check"
+            color="cyan"
+            delay={0.1}
+         />
+
+         <QuickCard
+            icon={BiNetworkChart}
+            label="Analyze Risk"
+            sub="AI anomaly detection"
+            color="amber"
+            delay={0.15}
+         />
+
+         <QuickCard
+            icon={MdDescription}
+            label="Inspection Report"
+            sub="Generate PDF report"
+            color="purple"
+            delay={0.2}
+         />
+
+         <QuickCard
+            icon={FaCube}
+            label="Blockchain Audit"
+            sub="Full chain audit trail"
+            color="green"
+            delay={0.25}
+         />
+
+      </div>
+
+   </div>
+
+</div>
 );
+
+
 
 // ─── Distributor ──────────────────────────────────────────
-const DistributorView = () => (
-  <div className="flex flex-col gap-6">
-    <TableCard title="Shipment Tracking" action="View All">
-      <table className="w-full hidden md:table">
-        <thead>
-          <tr className="border-b border-white/6">
-            <TH>Shipment ID</TH><TH>Drug</TH><TH>From</TH>
-            <TH>Quantity</TH><TH>Status</TH><TH>ETA</TH><TH>Actions</TH>
-          </tr>
-        </thead>
-        <tbody>
-          {SHIPMENTS.map((s) => (
-            <TR key={s.id}>
-              <TD><span className="font-mono text-xs text-cyan-400">{s.id}</span></TD>
-              <TD>
-                <div className="flex items-center gap-2.5">
-                  <DrugIcon /><p className="text-sm font-semibold text-white">{s.drug}</p>
-                </div>
-              </TD>
-              <TD><span className="text-xs text-gray-400">{s.from}</span></TD>
-              <TD><span className="text-xs">{s.qty}</span></TD>
-              <TD><StatusBadge label={s.status} /></TD>
-              <TD><span className="text-xs text-gray-400">{s.eta}</span></TD>
-              <TD>
-                <div className="flex gap-1.5">
-                  <ActionBtn icon={MdCheckCircle}    label="Accept" color="green" />
-                  <ActionBtn icon={MdLocalShipping}  label="Update" color="cyan" />
-                  <ActionBtn icon={BiTransfer}       label="Transfer" color="purple" />
-                </div>
-              </TD>
-            </TR>
-          ))}
-        </tbody>
-      </table>
-      <div className="md:hidden divide-y divide-white/5">
-        {SHIPMENTS.map((s) => (
-          <div key={s.id} className="p-4 space-y-2">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <DrugIcon />
-              <div>
-                <p className="text-sm font-semibold text-white">{s.drug}</p>
-                <p className="text-[11px] text-gray-600">{s.id} · From {s.from}</p>
-              </div>
-              <StatusBadge label={s.status} />
-            </div>
-            <div className="flex gap-1.5">
-              <ActionBtn icon={MdCheckCircle}   label="Accept" color="green" />
-              <ActionBtn icon={BiTransfer}      label="Transfer" color="purple" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </TableCard>
+const DistributorView = ({
+   drugs,
+   handleViewDetails,
+   handleVerifyDrug,
+   handleTransferDrug
+}) => (
 
-    <div>
-      <h2 className="text-base font-bold text-cyan-400 mb-4 px-1">Quick Actions</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <QuickCard icon={MdCheckCircle}   label="Accept Transfer"        sub="Receive drug shipment"    color="green"  delay={0.1} />
-        <QuickCard icon={MdLocalShipping} label="Update Shipment"        sub="Track delivery status"    color="cyan"   delay={0.15} />
-        <QuickCard icon={BiTransfer}      label="Transfer Next"          sub="Forward to retailer"      color="purple" delay={0.2} />
-        <QuickCard icon={FaCube}          label="Blockchain History"     sub="View on-chain records"    color="blue"   delay={0.25} />
+<div className="flex flex-col gap-6">
+
+   <TableCard
+      title="Shipment Tracking"
+      action="View All"
+   >
+
+      <table className="w-full hidden md:table">
+
+         <thead>
+
+            <tr className="border-b border-white/6">
+
+               <TH>Shipment ID</TH>
+
+               <TH>Drug</TH>
+
+               <TH>Manufacturer</TH>
+
+               <TH>Quantity</TH>
+
+               <TH>Status</TH>
+
+               <TH>Expiry</TH>
+
+               <TH>Actions</TH>
+
+            </tr>
+
+         </thead>
+
+         <tbody>
+
+            {drugs.map((d) => (
+
+               <TR key={d._id}>
+
+                  <TD>
+
+                     <span className="
+                        font-mono text-xs text-cyan-400
+                     ">
+                        {d.drugId}
+                     </span>
+
+                  </TD>
+
+                  <TD>
+
+                     <div className="
+                        flex items-center gap-2.5
+                     ">
+
+                        <DrugIcon />
+
+                        <p className="
+                           text-sm font-semibold text-white
+                        ">
+                           {d.name}
+                        </p>
+
+                     </div>
+
+                  </TD>
+
+                  <TD>
+
+                     <span className="
+                        text-xs text-gray-400
+                     ">
+
+                        {
+                        d.manufacturer?.name ||
+                        "Unknown"
+                        }
+
+                     </span>
+
+                  </TD>
+
+                  <TD>
+
+                     <span className="text-xs">
+
+                        {`${d.quantity} Units`}
+
+                     </span>
+
+                  </TD>
+
+                  <TD>
+
+                     <StatusBadge
+                        label={d.currentStage}
+                     />
+
+                  </TD>
+
+                  <TD>
+
+                     <span className="
+                        text-xs text-gray-400
+                     ">
+
+                        {
+                        new Date(
+                           d.expiryDate
+                        ).toLocaleDateString()
+                        }
+
+                     </span>
+
+                  </TD>
+
+                  <TD>
+
+                     <div className="
+                        flex gap-1.5 flex-wrap
+                     ">
+
+                        <ActionBtn
+                           icon={MdVerifiedUser}
+                           label="Verify"
+                           color="cyan"
+                           onClick={() =>
+                              handleVerifyDrug(d)
+                           }
+                        />
+
+                        <ActionBtn
+                           icon={BiTransfer}
+                           label="Transfer"
+                           color="purple"
+                           onClick={() =>
+                              handleTransferDrug(d)
+                           }
+                        />
+
+                        <ActionBtn
+                           icon={MdInfo}
+                           label="Details"
+                           color="amber"
+                           onClick={() =>
+                              handleViewDetails(d)
+                           }
+                        />
+
+                     </div>
+
+                  </TD>
+
+               </TR>
+
+            ))}
+
+         </tbody>
+
+      </table>
+
+      {/* mobile */}
+      <div className="
+         md:hidden divide-y divide-white/5
+      ">
+
+         {drugs.map((d) => (
+
+            <div
+               key={d._id}
+               className="p-4 space-y-2"
+            >
+
+               <div className="
+                  flex items-center gap-2.5 flex-wrap
+               ">
+
+                  <DrugIcon />
+
+                  <div>
+
+                     <p className="
+                        text-sm font-semibold text-white
+                     ">
+                        {d.name}
+                     </p>
+
+                     <p className="
+                        text-[11px] text-gray-600
+                     ">
+                        {d.drugId}
+                     </p>
+
+                  </div>
+
+                  <StatusBadge
+                     label={d.currentStage}
+                  />
+
+               </div>
+
+               <div className="
+                  flex gap-1.5 flex-wrap
+               ">
+
+                  <ActionBtn
+                     icon={MdVerifiedUser}
+                     label="Verify"
+                     color="cyan"
+                     onClick={() =>
+                        handleVerifyDrug(d)
+                     }
+                  />
+
+                  <ActionBtn
+                     icon={BiTransfer}
+                     label="Transfer"
+                     color="purple"
+                     onClick={() =>
+                        handleTransferDrug(d)
+                     }
+                  />
+
+                  <ActionBtn
+                     icon={MdInfo}
+                     label="Details"
+                     color="amber"
+                     onClick={() =>
+                        handleViewDetails(d)
+                     }
+                  />
+
+               </div>
+
+            </div>
+
+         ))}
+
       </div>
-    </div>
-  </div>
+
+   </TableCard>
+
+   {/* Quick Actions */}
+   <div>
+
+      <h2 className="
+         text-base font-bold
+         text-cyan-400 mb-4 px-1
+      ">
+         Quick Actions
+      </h2>
+
+      <div className="
+         grid grid-cols-2 sm:grid-cols-4 gap-3
+      ">
+
+         <QuickCard
+            icon={MdCheckCircle}
+            label="Accept Transfer"
+            sub="Receive drug shipment"
+            color="green"
+            delay={0.1}
+         />
+
+         <QuickCard
+            icon={MdLocalShipping}
+            label="Update Shipment"
+            sub="Track delivery status"
+            color="cyan"
+            delay={0.15}
+         />
+
+         <QuickCard
+            icon={BiTransfer}
+            label="Transfer Next"
+            sub="Forward to retailer"
+            color="purple"
+            delay={0.2}
+         />
+
+         <QuickCard
+            icon={FaCube}
+            label="Blockchain History"
+            sub="View on-chain records"
+            color="blue"
+            delay={0.25}
+         />
+
+      </div>
+
+   </div>
+
+</div>
 );
 
-// ─── Retailer ─────────────────────────────────────────────
-const RetailerView = () => (
-  <div className="flex flex-col gap-6">
-    <TableCard title="Available Stock" action="View All">
-      <table className="w-full hidden md:table">
-        <thead>
-          <tr className="border-b border-white/6">
-            <TH>Medicine</TH><TH>Batch</TH><TH>Stock</TH>
-            <TH>Verified</TH><TH>QR Scan Result</TH><TH>Actions</TH>
-          </tr>
-        </thead>
-        <tbody>
-          {RETAIL_STOCK.map((r) => (
-            <TR key={r.id}>
-              <TD>
-                <div className="flex items-center gap-2.5">
-                  <DrugIcon /><p className="text-sm font-semibold text-white">{r.name}</p>
-                </div>
-              </TD>
-              <TD><span className="font-mono text-xs text-gray-400">{r.batch}</span></TD>
-              <TD><span className="text-xs">{r.stock}</span></TD>
-              <TD><BlockchainBadge status={r.verified ? "Verified" : "Pending"} /></TD>
-              <TD><StatusBadge label={r.scan} /></TD>
-              <TD>
-                <div className="flex gap-1.5">
-                  <ActionBtn icon={MdVerifiedUser} label="Verify" color="cyan" />
-                  <ActionBtn icon={MdQrCode2}      label="Scan QR" color="purple" />
-                  <ActionBtn icon={FaCube}         label="Supply Chain" color="green" />
-                </div>
-              </TD>
-            </TR>
-          ))}
-        </tbody>
-      </table>
-      <div className="md:hidden divide-y divide-white/5">
-        {RETAIL_STOCK.map((r) => (
-          <div key={r.id} className="p-4 space-y-2">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <DrugIcon />
-              <div>
-                <p className="text-sm font-semibold text-white">{r.name}</p>
-                <p className="text-[11px] text-gray-600">{r.batch}</p>
-              </div>
-              <StatusBadge label={r.scan} />
-            </div>
-            <div className="flex gap-1.5">
-              <ActionBtn icon={MdVerifiedUser} label="Verify" color="cyan" />
-              <ActionBtn icon={MdQrCode2}      label="Scan QR" color="purple" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </TableCard>
 
-    <div>
-      <h2 className="text-base font-bold text-cyan-400 mb-4 px-1">Quick Actions</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <QuickCard icon={MdVerifiedUser} label="Verify Drug"         sub="Authenticate medicine"     color="cyan"   delay={0.1} />
-        <QuickCard icon={MdQrCode2}      label="Scan QR"             sub="Camera QR scan"            color="purple" delay={0.15} />
-        <QuickCard icon={FaCube}         label="Supply Chain"        sub="View full journey"         color="green"  delay={0.2} />
-        <QuickCard icon={MdWarning}      label="Report Suspicious"   sub="Flag counterfeit product"  color="amber"  delay={0.25} />
+
+// ─── Retailer ─────────────────────────────────────────────
+const RetailerView = ({
+   drugs,
+   handleVerifyDrug,
+   handleViewDetails
+}) => (
+
+<div className="flex flex-col gap-6">
+
+   <TableCard
+      title="Available Stock"
+      action="View All"
+   >
+
+      <table className="w-full hidden md:table">
+
+         <thead>
+
+            <tr className="border-b border-white/6">
+
+               <TH>Medicine</TH>
+
+               <TH>Batch</TH>
+
+               <TH>Stock</TH>
+
+               <TH>Verified</TH>
+
+               <TH>Status</TH>
+
+               <TH>Actions</TH>
+
+            </tr>
+
+         </thead>
+
+         <tbody>
+
+            {drugs.map((d) => (
+
+               <TR key={d._id}>
+
+                  <TD>
+
+                     <div className="
+                        flex items-center gap-2.5
+                     ">
+
+                        <DrugIcon />
+
+                        <p className="
+                           text-sm font-semibold text-white
+                        ">
+                           {d.name}
+                        </p>
+
+                     </div>
+
+                  </TD>
+
+                  <TD>
+
+                     <span className="
+                        font-mono text-xs text-gray-400
+                     ">
+                        {d.batchNumber}
+                     </span>
+
+                  </TD>
+
+                  <TD>
+
+                     <span className="text-xs">
+
+                        {`${d.quantity} Units`}
+
+                     </span>
+
+                  </TD>
+
+                  <TD>
+
+                     <BlockchainBadge
+                        status={
+                           d.isBlockchainVerified
+                           ? "Verified"
+                           : "Pending"
+                        }
+                     />
+
+                  </TD>
+
+                  <TD>
+
+                     <StatusBadge
+                        label={d.currentStage}
+                     />
+
+                  </TD>
+
+                  <TD>
+
+                     <div className="
+                        flex gap-1.5 flex-wrap
+                     ">
+
+                        <ActionBtn
+                           icon={MdVerifiedUser}
+                           label="Verify"
+                           color="cyan"
+                           onClick={() =>
+                              handleVerifyDrug(d)
+                           }
+                        />
+
+                        <ActionBtn
+                           icon={MdInfo}
+                           label="Details"
+                           color="amber"
+                           onClick={() =>
+                              handleViewDetails(d)
+                           }
+                        />
+
+                     </div>
+
+                  </TD>
+
+               </TR>
+
+            ))}
+
+         </tbody>
+
+      </table>
+
+      {/* mobile */}
+      <div className="
+         md:hidden divide-y divide-white/5
+      ">
+
+         {drugs.map((d) => (
+
+            <div
+               key={d._id}
+               className="p-4 space-y-2"
+            >
+
+               <div className="
+                  flex items-center gap-2.5 flex-wrap
+               ">
+
+                  <DrugIcon />
+
+                  <div>
+
+                     <p className="
+                        text-sm font-semibold text-white
+                     ">
+                        {d.name}
+                     </p>
+
+                     <p className="
+                        text-[11px] text-gray-600
+                     ">
+                        {d.batchNumber}
+                     </p>
+
+                  </div>
+
+                  <StatusBadge
+                     label={d.currentStage}
+                  />
+
+               </div>
+
+               <div className="
+                  flex gap-1.5 flex-wrap
+               ">
+
+                  <ActionBtn
+                     icon={MdVerifiedUser}
+                     label="Verify"
+                     color="cyan"
+                     onClick={() =>
+                        handleVerifyDrug(d)
+                     }
+                  />
+
+                  <ActionBtn
+                     icon={MdInfo}
+                     label="Details"
+                     color="amber"
+                     onClick={() =>
+                        handleViewDetails(d)
+                     }
+                  />
+
+               </div>
+
+            </div>
+
+         ))}
+
       </div>
-    </div>
-  </div>
+
+   </TableCard>
+
+   {/* Quick Actions */}
+   <div>
+
+      <h2 className="
+         text-base font-bold
+         text-cyan-400 mb-4 px-1
+      ">
+         Quick Actions
+      </h2>
+
+      <div className="
+         grid grid-cols-2 sm:grid-cols-4 gap-3
+      ">
+
+         <QuickCard
+            icon={MdVerifiedUser}
+            label="Verify Drug"
+            sub="Authenticate medicine"
+            color="cyan"
+            delay={0.1}
+         />
+
+         <QuickCard
+            icon={MdQrCode2}
+            label="Scan QR"
+            sub="Camera QR scan"
+            color="purple"
+            delay={0.15}
+         />
+
+         <QuickCard
+            icon={FaCube}
+            label="Supply Chain"
+            sub="View full journey"
+            color="green"
+            delay={0.2}
+         />
+
+         <QuickCard
+            icon={MdWarning}
+            label="Report Suspicious"
+            sub="Flag counterfeit product"
+            color="amber"
+            delay={0.25}
+         />
+
+      </div>
+
+   </div>
+
+</div>
 );
 const InfoCard = ({
    label,
@@ -784,6 +1417,14 @@ export default function Profile() {
   setSelectedTransferDrug] =
     useState(null);
 
+  const [showTransferConfirm,
+  setShowTransferConfirm] =
+    useState(false);
+
+  const [transferSuccessData,
+  setTransferSuccessData] =
+    useState(null);
+
   const [transferForm,
   setTransferForm] =
     useState({
@@ -795,6 +1436,10 @@ export default function Profile() {
           longitude: "",
         }
     });
+  const [blockchainProcessing,
+  setBlockchainProcessing] =
+    useState(false);
+
    
    
 
@@ -847,6 +1492,9 @@ export default function Profile() {
 const handleConfirmTransfer =
 async () => {
 
+   setShowTransferConfirm(false);
+   
+
    if(
       !transferForm.toUserEmail
    ){
@@ -854,6 +1502,8 @@ async () => {
    }
 
    try {
+      setBlockchainProcessing(true);
+      
 
       const payload = {
 
@@ -875,6 +1525,16 @@ async () => {
             transferDrugOwnership(payload)
 
          ).unwrap();
+      
+
+      setTransferSuccessData({
+
+        ...result,
+
+        recipientEmail:
+            transferForm.toUserEmail
+      });
+      setBlockchainProcessing(false);
 
       console.log(
          "Transfer success:",
@@ -903,7 +1563,143 @@ async () => {
    catch(error){
 
       console.error(error);
+      setBlockchainProcessing(false);
    }
+};
+
+const downloadTransferReceipt =
+() => {
+
+   if(!transferSuccessData) return;
+
+   const doc =
+      new jsPDF();
+
+   const drug =
+      transferSuccessData.data.drug;
+
+   const scan =
+      transferSuccessData.data.scan;
+
+   /* title */
+   doc.setFontSize(22);
+
+   doc.setTextColor(0, 180, 255);
+
+   doc.text(
+      "Pharmaceutical Transfer Certificate",
+      20,
+      25
+   );
+
+   /* subtitle */
+   doc.setFontSize(11);
+
+   doc.setTextColor(120);
+
+   doc.text(
+      "Blockchain-secured drug ownership transfer receipt",
+      20,
+      35
+   );
+
+   /* line */
+   doc.setDrawColor(0, 180, 255);
+
+   doc.line(20, 42, 190, 42);
+
+   /* transfer status */
+   doc.setFontSize(14);
+
+   doc.setTextColor(0, 150, 0);
+
+   doc.text(
+      "Transfer Successfully Completed",
+      20,
+      55
+   );
+
+   /* table */
+   autoTable(doc, {
+
+      startY: 65,
+
+      head: [[
+         "Field",
+         "Details"
+      ]],
+
+      body: [
+
+         [
+            "Drug Name",
+            drug.name
+         ],
+
+         [
+            "Drug ID",
+            drug.drugId
+         ],
+
+         [
+            "Batch Number",
+            drug.batchNumber
+         ],
+
+         [
+            "Current Stage",
+            drug.currentStage
+         ],
+
+         [
+            "Blockchain Tx Hash",
+            drug.blockchainTxHash || "N/A"
+         ],
+
+         [
+            "Transferred By",
+            data?.name || "Unknown"
+         ],
+
+         [
+            "Recipient Email",
+            transferSuccessData.recipientEmail
+         ],
+
+         [
+            "Transfer Action",
+            scan.action
+         ],
+
+         [
+            "Verification",
+            "Blockchain Verified"
+         ],
+
+         [
+            "Generated On",
+            new Date()
+            .toLocaleString()
+         ],
+      ],
+   });
+
+   /* footer */
+   doc.setFontSize(10);
+
+   doc.setTextColor(130);
+
+   doc.text(
+      "AI-Driven Blockchain Pharmaceutical Supply Chain System",
+      20,
+      280
+   );
+
+   /* save */
+   doc.save(
+
+      `${drug.drugId}-transfer-receipt.pdf`
+   );
 };
 
   const {
@@ -996,7 +1792,12 @@ const isDrugExpired = (date) => {
 
    dispatch(getProfile());
 
-   if(role === "manufacturer"){
+   if(
+      role === "manufacturer" ||
+      role === "distributor" ||
+      role === "retailer" ||
+      role === "inspector"
+   ){
 
       dispatch(getMyDrugs());
    }
@@ -1099,9 +1900,9 @@ const isDrugExpired = (date) => {
 
   const roleViews = {
     manufacturer: <ManufacturerView drugs={drugs} handleViewDetails={handleViewDetails} handleShowQR={handleShowQR} handleVerifyDrug={handleVerifyDrug} handleTransferDrug={handleTransferDrug} />,
-    distributor:  <DistributorView />,
-    retailer:     <RetailerView />,
-    inspector:    <InspectorView />,
+    distributor:  <DistributorView drugs={drugs} handleViewDetails={handleViewDetails}  handleVerifyDrug={handleVerifyDrug} handleTransferDrug={handleTransferDrug} />,
+    retailer:     <RetailerView  drugs={drugs} handleViewDetails={handleViewDetails} handleVerifyDrug={handleVerifyDrug}/>,
+    inspector:    <InspectorView  drugs={drugs} handleVerifyDrug={handleVerifyDrug} handleViewDetails={handleViewDetails}/>,
   };
 
   return (
@@ -2668,7 +3469,7 @@ const isDrugExpired = (date) => {
 
                   <button
 
-                      onClick={handleConfirmTransfer}
+                      onClick={()=>setShowTransferConfirm(true)}
                       className="
                         px-6 py-3 rounded-xl
                         bg-purple-500/20
@@ -2683,6 +3484,556 @@ const isDrugExpired = (date) => {
                   </button>
 
                 </div>
+
+            </div>
+
+          </div>
+
+      </div>
+
+    </div>
+
+    )
+    }
+
+    {
+    showTransferConfirm && (
+
+    <div className="
+    fixed inset-0 z-[90]
+    flex items-center justify-center
+    bg-black/80 backdrop-blur-sm
+    px-4
+    ">
+
+      <div className="
+          w-full max-w-md
+          rounded-3xl
+          border border-purple-500/20
+          bg-[#07111f]
+          p-7
+          shadow-[0_0_60px_rgba(168,85,247,0.2)]
+      ">
+
+          <div className="
+            flex flex-col items-center
+            text-center
+          ">
+
+            <div className="
+                w-24 h-24
+                rounded-full
+                bg-purple-500/10
+                border border-purple-500/20
+                flex items-center justify-center
+                mb-6
+            ">
+
+                <BiTransfer
+                  size={48}
+                  className="text-purple-400"
+                />
+
+            </div>
+
+            <h2 className="
+                text-3xl font-bold
+                text-white
+            ">
+                Confirm Transfer
+            </h2>
+
+            <p className="
+                text-gray-400 mt-4 leading-relaxed
+            ">
+                You are about to transfer
+                ownership of this drug
+                on the blockchain network.
+            </p>
+
+            <div className="
+                mt-6
+                rounded-2xl
+                border border-white/10
+                bg-white/5
+                p-4
+                w-full text-left
+            ">
+
+                <p className="
+                  text-sm text-purple-300
+                ">
+                  Drug
+                </p>
+
+                <p className="
+                  text-white font-semibold mt-1
+                ">
+                  {selectedTransferDrug?.name}
+                </p>
+
+                <p className="
+                  text-gray-400 text-sm mt-1
+                ">
+                  {
+                  selectedTransferDrug?.drugId
+                  }
+                </p>
+
+            </div>
+
+            <div className="
+                flex gap-4 mt-8 w-full
+            ">
+
+                <button
+
+                  onClick={() =>
+                      setShowTransferConfirm(false)
+                  }
+
+                  className="
+                      flex-1
+                      py-3 rounded-xl
+                      border border-white/10
+                      text-gray-300
+                      hover:bg-white/5
+                      transition-all
+                  "
+                >
+                  Cancel
+                </button>
+
+                <button
+
+                  onClick={
+                      handleConfirmTransfer
+                  }
+
+                  className="
+                      flex-1
+                      py-3 rounded-xl
+                      bg-purple-500/20
+                      border border-purple-500/20
+                      text-purple-300
+                      font-semibold
+                      hover:bg-purple-500/30
+                      transition-all
+                  "
+                >
+                  Yes, Transfer
+                </button>
+
+            </div>
+
+          </div>
+
+      </div>
+
+    </div>
+
+    )
+    }
+
+    {
+    blockchainProcessing && (
+
+    <div className="
+    fixed inset-0 z-[100]
+    flex items-center justify-center
+    bg-[#020817]/95
+    backdrop-blur-md
+    overflow-hidden
+    ">
+
+      {/* animated background */}
+      <div className="
+          absolute inset-0
+          bg-[radial-gradient(circle_at_center,rgba(139,92,246,0.15),transparent_45%)]
+      " />
+
+      {/* floating glow */}
+      <motion.div
+
+          animate={{
+            scale: [1, 1.3, 1],
+            opacity: [0.3, 0.6, 0.3]
+          }}
+
+          transition={{
+            duration: 3,
+            repeat: Infinity
+          }}
+
+          className="
+            absolute
+            w-[500px] h-[500px]
+            rounded-full
+            bg-purple-500/10
+            blur-3xl
+          "
+      />
+
+      <div className="
+          relative z-10
+          flex flex-col items-center
+          text-center
+          px-6
+      ">
+
+          {/* blockchain circles */}
+          <div className="
+            relative
+            flex items-center justify-center
+            mb-10
+          ">
+
+            {/* left node */}
+            <motion.div
+
+                animate={{
+                  y: [0, -12, 0]
+                }}
+
+                transition={{
+                  duration: 2,
+                  repeat: Infinity
+                }}
+
+                className="
+                  w-24 h-24
+                  rounded-3xl
+                  border border-cyan-500/30
+                  bg-cyan-500/10
+                  flex items-center justify-center
+                  shadow-[0_0_30px_rgba(0,229,255,0.3)]
+                "
+            >
+
+                <MdVerifiedUser
+                  size={44}
+                  className="text-cyan-400"
+                />
+
+            </motion.div>
+
+            {/* transfer animation */}
+            <motion.div
+
+                animate={{
+                  x: [0, 25, 0]
+                }}
+
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity
+                }}
+
+                className="mx-8"
+            >
+
+                <BiTransfer
+                  size={42}
+                  className="text-purple-400"
+                />
+
+            </motion.div>
+
+            {/* right node */}
+            <motion.div
+
+                animate={{
+                  y: [0, 12, 0]
+                }}
+
+                transition={{
+                  duration: 2,
+                  repeat: Infinity
+                }}
+
+                className="
+                  w-24 h-24
+                  rounded-3xl
+                  border border-green-500/30
+                  bg-green-500/10
+                  flex items-center justify-center
+                  shadow-[0_0_30px_rgba(34,197,94,0.3)]
+                "
+            >
+
+                <MdOutlineInventory2
+                  size={44}
+                  className="text-green-400"
+                />
+
+            </motion.div>
+
+          </div>
+
+          {/* title */}
+          <h2 className="
+            text-4xl font-black
+            text-white
+          ">
+            Blockchain Processing
+          </h2>
+
+          <p className="
+            mt-4
+            text-lg text-gray-400
+            max-w-xl
+            leading-relaxed
+          ">
+            Smart contract ownership transfer
+            is being securely processed
+            on the blockchain network.
+          </p>
+
+          {/* stages */}
+          <div className="
+            mt-12
+            grid gap-5
+            w-full max-w-lg
+          ">
+
+            {
+            [
+                "Validating ownership",
+                "Executing smart contract",
+                "Mining blockchain transaction",
+                "Updating pharmaceutical ledger",
+                "Generating immutable audit log"
+            ].map((step, index) => (
+
+                <motion.div
+
+                  key={index}
+
+                  initial={{
+                      opacity: 0,
+                      x: -20
+                  }}
+
+                  animate={{
+                      opacity: 1,
+                      x: 0
+                  }}
+
+                  transition={{
+                      delay: index * 0.4
+                  }}
+
+                  className="
+                      flex items-center gap-4
+                      rounded-2xl
+                      border border-white/10
+                      bg-white/5
+                      px-5 py-4
+                  "
+                >
+
+                  <motion.div
+
+                      animate={{
+                        scale: [1, 1.3, 1]
+                      }}
+
+                      transition={{
+                        duration: 1.5,
+                        repeat: Infinity
+                      }}
+
+                      className="
+                        w-3 h-3
+                        rounded-full
+                        bg-purple-400
+                      "
+                  />
+
+                  <p className="
+                      text-gray-200
+                  ">
+                      {step}
+                  </p>
+
+                </motion.div>
+
+            ))
+            }
+
+          </div>
+
+          {/* loader */}
+          <motion.div
+
+            animate={{
+                rotate: 360
+            }}
+
+            transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "linear"
+            }}
+
+            className="
+                mt-10
+                w-16 h-16
+                rounded-full
+                border-4
+                border-purple-500/20
+                border-t-purple-400
+            "
+          />
+
+          {/* footer */}
+          <p className="
+            mt-8
+            text-sm text-gray-500
+          ">
+            Secured by AI + Blockchain Infrastructure
+          </p>
+
+      </div>
+
+    </div>
+
+    )
+    }
+
+    {
+    transferSuccessData && (
+
+    <div className="
+    fixed inset-0 z-[95]
+    flex items-center justify-center
+    bg-black/80 backdrop-blur-sm
+    px-4
+    ">
+
+      <div className="
+          w-full max-w-lg
+          rounded-3xl
+          border border-green-500/20
+          bg-[#07111f]
+          p-8
+          shadow-[0_0_70px_rgba(34,197,94,0.18)]
+      ">
+
+          <div className="
+            flex flex-col items-center
+            text-center
+          ">
+
+            {/* icon */}
+            <div className="
+                w-28 h-28
+                rounded-full
+                bg-green-500/10
+                border border-green-500/20
+                flex items-center justify-center
+                mb-6
+            ">
+
+                <MdCheckCircle
+                  size={60}
+                  className="text-green-400"
+                />
+
+            </div>
+
+            {/* title */}
+            <h2 className="
+                text-3xl font-bold
+                text-white
+            ">
+                Transfer Successful
+            </h2>
+
+            <p className="
+                mt-4 text-gray-400
+                leading-relaxed
+            ">
+                Drug ownership has been
+                securely transferred and
+                recorded on blockchain.
+            </p>
+
+            {/* tx info */}
+            <div className="
+                mt-6
+                w-full
+                rounded-2xl
+                border border-white/10
+                bg-white/5
+                p-4
+                text-left
+            ">
+
+                <p className="
+                  text-sm text-green-300
+                ">
+                  Blockchain Transaction
+                </p>
+
+                <p className="
+                  mt-2
+                  text-xs text-gray-300
+                  break-all
+                  font-mono
+                ">
+                  {
+                  transferSuccessData
+                  ?.data
+                  ?.drug
+                  ?.blockchainTxHash || "N/A"
+                  }
+                </p>
+
+            </div>
+
+            {/* buttons */}
+            <div className="
+                flex gap-4 mt-8 w-full
+            ">
+
+                <button
+
+                  onClick={() =>
+                      setTransferSuccessData(null)
+                  }
+
+                  className="
+                      flex-1
+                      py-3 rounded-xl
+                      border border-white/10
+                      text-gray-300
+                      hover:bg-white/5
+                      transition-all
+                  "
+                >
+                  Close
+                </button>
+
+                <button
+
+                  onClick={
+                      downloadTransferReceipt
+                  }
+
+                  className="
+                      flex-1
+                      py-3 rounded-xl
+                      bg-green-500/20
+                      border border-green-500/20
+                      text-green-300
+                      font-semibold
+                      hover:bg-green-500/30
+                      transition-all
+                  "
+                >
+                  Download Receipt
+                </button>
 
             </div>
 
