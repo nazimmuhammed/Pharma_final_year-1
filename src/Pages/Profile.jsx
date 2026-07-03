@@ -7,7 +7,9 @@ import {
   MdPerson, MdBusiness, MdCalendarToday, MdAccountBalanceWallet,
   MdNumbers, MdRefresh, MdVisibility, MdSearch, MdFilterList,
   MdTrendingUp, MdTrendingDown, MdLock, MdInfo,MdQrCodeScanner,
-  MdCloudUpload,MdDangerous
+  MdCloudUpload,MdDangerous,MdMedication,MdInventory,MdFactCheck,
+
+
 } from "react-icons/md";
 import {
   RiShieldCheckFill, RiMedicineBottleLine, RiFileWarningLine,
@@ -35,18 +37,53 @@ import jsPDF from "jspdf";
 
 import autoTable from "jspdf-autotable";
 
+import MetricsStrip from "../components/profile/MetricsStrip";
+import DrugDetailsModal from "../components/profile/modals/DrugDetailsModal";
+import QRCodeModal from
+"../components/profile/modals/QRCodeModal";
 
+import VerifyDrugModal from
+"../components/profile/modals/VerifyDrugModal";
 
+import VerificationResultModal from
+"../components/profile/modals/VerificationResultModal";
 
+import TransferModal from
+"../components/profile/modals/TransferModal";
 
+import TransferSuccessModal from
+"../components/profile/modals/TransferSuccessModal";
 
-const ACTIVITY = [
-  { icon:<MdCheckCircle size={15}/>, color:"text-green-400", msg:"Drug registered: Amoxicillin 250mg (BATCH-2026-002)", time:"29 Jun 2026, 03:35 PM" },
-  { icon:<BiTransfer size={15}/>, color:"text-cyan-400", msg:"Drug transferred to Distributor - MedDistributors Pvt Ltd", time:"29 Jun 2026, 01:20 PM" },
-  { icon:<MdQrCode2 size={15}/>, color:"text-purple-400", msg:"QR Code generated for Paracetamol 500mg (BATCH-2026-001)", time:"29 Jun 2026, 11:05 AM" },
-  { icon:<MdWarning size={15}/>, color:"text-amber-400", msg:"Risk analysis completed for Ciprofloxacin 500mg", time:"29 Jun 2026, 10:15 AM" },
-];
+import InvalidQRModal from
+"../components/profile/modals/InvalidQRModal";
+import TransferConfirmModal from
+"../components/profile/modals/TransferConfirmModal";
 
+import BlockchainProcessingModal from
+"../components/profile/modals/BlockchainProcessingModal";
+
+import ActionBtn from
+"../components/profile/ui/ActionBtn";
+
+import StatusBadge from
+"../components/profile/ui/StatusBadge";
+import BlockchainBadge from
+"../components/profile/ui/BlockchainBadge";
+
+import RiskPill from
+"../components/profile/ui/RiskPill";
+import TableCard from
+"../components/profile/ui/TableCard";
+import QuickCard from
+"../components/profile/ui/QuickCard";
+import ManufacturerView from
+"../components/profile/views/ManufacturerView";
+import DistributorView from
+"../components/profile/views/DistributorView";
+import RetailerView from
+"../components/profile/views/RetailerView";
+import InspectorView from
+"../components/profile/views/InspectorView";
 
 
 // ─── Tiny sparkline ───────────────────────────────────────
@@ -91,65 +128,8 @@ const RoleBadge = ({ role }) => {
   );
 };
 
-// ─── Status badge ─────────────────────────────────────────
-const StatusBadge = ({ label }) => {
-  const map = {
-    "Manufactured": "bg-purple-500/20 text-purple-300 border-purple-500/30",
-    "Transferred":  "bg-blue-500/20 text-blue-300 border-blue-500/30",
-    "In Transit":   "bg-amber-500/20 text-amber-300 border-amber-500/30",
-    "Delivered":    "bg-green-500/20 text-green-300 border-green-500/30",
-    "Pending":      "bg-gray-500/20 text-gray-400 border-gray-500/30",
-    "Authentic":    "bg-green-500/20 text-green-300 border-green-500/30",
-    "Unverified":   "bg-red-500/20 text-red-300 border-red-500/30",
-    "Normal":       "bg-green-500/20 text-green-300 border-green-500/30",
-    "Anomaly":      "bg-red-500/20 text-red-300 border-red-500/30",
-    "Suspicious":   "bg-amber-500/20 text-amber-300 border-amber-500/30",
-  };
-  return (
-    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${map[label] ?? "bg-gray-500/20 text-gray-400 border-gray-500/30"}`}>
-      {label}
-    </span>
-  );
-};
 
-// ─── Blockchain status badge ───────────────────────────────
-const BlockchainBadge = ({ status }) =>
-  status === "Verified" ? (
-    <span className="flex items-center gap-1 text-green-400 text-xs font-semibold">
-      <MdCheckCircle size={13} /> Verified
-    </span>
-  ) : (
-    <span className="flex items-center gap-1 text-amber-400 text-xs font-semibold">
-      <MdWarning size={13} /> Pending
-    </span>
-  );
 
-// ─── Risk score pill ──────────────────────────────────────
-const RiskPill = ({ score, label }) => {
-  const color = label === "Low" ? "text-green-400" : label === "Medium" ? "text-amber-400" : "text-red-400";
-  return <span className={`text-xs font-bold ${color}`}>{score} ({label})</span>;
-};
-
-// ─── Action button ────────────────────────────────────────
-const ActionBtn = ({ icon: Icon, label, color = "cyan", onClick }) => {
-  const colors = {
-    cyan:   "border-cyan-500/30 text-cyan-400 hover:bg-cyan-400/10 hover:shadow-[0_0_12px_rgba(0,229,255,0.3)]",
-    purple: "border-purple-500/30 text-purple-400 hover:bg-purple-400/10 hover:shadow-[0_0_12px_rgba(139,92,246,0.3)]",
-    green:  "border-green-500/30 text-green-400 hover:bg-green-400/10 hover:shadow-[0_0_12px_rgba(74,222,128,0.3)]",
-    amber:  "border-amber-500/30 text-amber-400 hover:bg-amber-400/10 hover:shadow-[0_0_12px_rgba(251,191,36,0.3)]",
-  };
-  return (
-    <motion.button
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
-      onClick={onClick}
-      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition-all duration-200 ${colors[color]}`}
-    >
-      {Icon && <Icon size={13} />}
-      {label}
-    </motion.button>
-  );
-};
 
 // ─── Metric card ──────────────────────────────────────────
 const MetricCard = ({ icon: Icon, label, value, sub, color, sparkColor, sparkData, delay = 0 }) => (
@@ -180,86 +160,9 @@ const MetricCard = ({ icon: Icon, label, value, sub, color, sparkColor, sparkDat
   </motion.div>
 );
 
-// ─── Table wrapper ────────────────────────────────────────
-const TableCard = ({ title, action, children }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.45 }}
-    className="rounded-2xl border border-cyan-500/10 bg-[#060f1e]/90 backdrop-blur-xl overflow-hidden"
-    style={{ boxShadow: "0 0 50px rgba(0,229,255,0.04)" }}
-  >
-    <div className="flex items-center justify-between px-6 py-4 border-b border-cyan-500/10">
-      <h2 className="text-base font-bold text-cyan-400">{title}</h2>
-      {action && (
-        <motion.button
-          whileHover={{ scale: 1.03, boxShadow: "0 0 14px rgba(0,229,255,0.25)" }}
-          className="flex items-center gap-1.5 text-xs font-semibold text-cyan-300 border border-cyan-400/25 rounded-xl px-3 py-1.5 hover:bg-cyan-400/8 transition-all"
-        >
-          {action} <MdArrowForward size={14} />
-        </motion.button>
-      )}
-    </div>
-    <div className="overflow-x-auto">{children}</div>
-  </motion.div>
-);
 
-// ─── Table head ───────────────────────────────────────────
-const TH = ({ children }) => (
-  <th className="px-4 py-3 text-left text-[11px] font-semibold tracking-widest text-gray-500 uppercase whitespace-nowrap">
-    {children}
-  </th>
-);
 
-// ─── Table row ────────────────────────────────────────────
-const TR = ({ children }) => (
-  <motion.tr
-    whileHover={{ backgroundColor: "rgba(0,229,255,0.03)" }}
-    className="border-b border-white/4 transition-colors duration-150"
-  >
-    {children}
-  </motion.tr>
-);
-const TD = ({ children }) => (
-  <td className="px-4 py-3 text-sm text-gray-300 whitespace-nowrap">{children}</td>
-);
 
-// ─── Drug icon pill ───────────────────────────────────────
-const DrugIcon = () => (
-  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
-    <RiMedicineBottleLine size={15} />
-  </div>
-);
-
-// ─── Quick action card ────────────────────────────────────
-const QuickCard = ({ icon: Icon, label, sub, color, delay = 0 }) => {
-  const colors = {
-    cyan:   { bg: "from-cyan-500/10 to-cyan-500/5",   border: "border-cyan-500/20",   text: "text-cyan-400",   glow: "rgba(0,229,255,0.15)" },
-    purple: { bg: "from-purple-500/10 to-purple-500/5", border: "border-purple-500/20", text: "text-purple-400", glow: "rgba(139,92,246,0.15)" },
-    green:  { bg: "from-green-500/10 to-green-500/5",  border: "border-green-500/20",  text: "text-green-400",  glow: "rgba(74,222,128,0.15)" },
-    amber:  { bg: "from-amber-500/10 to-amber-500/5",  border: "border-amber-500/20",  text: "text-amber-400",  glow: "rgba(251,191,36,0.15)" },
-    blue:   { bg: "from-blue-500/10 to-blue-500/5",    border: "border-blue-500/20",   text: "text-blue-400",   glow: "rgba(59,130,246,0.15)" },
-  };
-  const c = colors[color] ?? colors.cyan;
-  return (
-    <motion.button
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.35 }}
-      whileHover={{ y: -4, boxShadow: `0 0 24px ${c.glow}` }}
-      className={`relative overflow-hidden rounded-2xl border ${c.border} bg-gradient-to-br ${c.bg} p-5 flex flex-col items-center gap-3 text-center transition-all duration-200 cursor-pointer w-full`}
-    >
-      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${c.text}`}
-        style={{ background: `${c.glow}` }}>
-        <Icon size={24} />
-      </div>
-      <div>
-        <p className={`text-sm font-bold ${c.text}`}>{label}</p>
-        {sub && <p className="text-[11px] text-gray-600 mt-0.5">{sub}</p>}
-      </div>
-    </motion.button>
-  );
-};
 
 // ─── Profile + Blockchain header ─────────────────────────
 const ProfileHeader = ({ role, data }) => (
@@ -347,1014 +250,8 @@ const ProfileHeader = ({ role, data }) => (
   </div>
 );
 
-// ─── Metrics strip ────────────────────────────────────────
-const MetricsStrip = ({ role }) => {
-  const cards = {
-    manufacturer: [
-      { icon: RiMedicineBottleLine, label:"Total Drugs Registered", value:24, sub:"All time",          color:"#a855f7", sparkColor:"#a855f7", sparkData:[10,14,12,18,15,20,24] },
-      { icon: MdVerifiedUser,       label:"Blockchain Verified",   value:22, sub:"91.67%",             color:"#00e5ff", sparkColor:"#00e5ff", sparkData:[8,12,14,17,18,21,22] },
-      { icon: BiTransfer,           label:"Transferred",           value:15, sub:"62.50%",             color:"#22c55e", sparkColor:"#22c55e", sparkData:[4,6,8,9,11,13,15] },
-      { icon: MdWarning,            label:"Risk Alerts",           value:2,  sub:"Requires attention", color:"#f59e0b", sparkColor:"#f59e0b", sparkData:[1,0,1,2,1,3,2] },
-      { icon: BsBoxSeam,            label:"Active Shipments",      value:5,  sub:"In transit",         color:"#818cf8", sparkColor:"#818cf8", sparkData:[2,3,4,3,5,4,5] },
-    ],
-    distributor: [
-      { icon: BsTruck,          label:"Incoming Shipments", value:8,  sub:"Pending receipt",    color:"#00e5ff", sparkColor:"#00e5ff", sparkData:[3,5,6,7,8,8,8] },
-      { icon: BsBoxSeam,        label:"Current Inventory",  value:312,sub:"Units in stock",     color:"#22c55e", sparkColor:"#22c55e", sparkData:[200,250,280,300,310,312,312] },
-      { icon: BiTransfer,       label:"Transfers Done",     value:29, sub:"This month",         color:"#a855f7", sparkColor:"#a855f7", sparkData:[10,14,18,22,25,27,29] },
-      { icon: MdWarning,        label:"Risk Alerts",        value:1,  sub:"Needs review",       color:"#f59e0b", sparkColor:"#f59e0b", sparkData:[0,1,0,1,1,1,1] },
-    ],
-    retailer: [
-      { icon: BsBoxSeam,        label:"Available Stock",    value:217,sub:"Units total",        color:"#22c55e", sparkColor:"#22c55e", sparkData:[180,190,200,205,210,215,217] },
-      { icon: MdVerifiedUser,   label:"Verified Medicines", value:14, sub:"Of 15 products",     color:"#00e5ff", sparkColor:"#00e5ff", sparkData:[8,9,10,11,12,13,14] },
-      { icon: MdQrCode2,        label:"QR Scans Today",     value:38, sub:"Authenticity checks",color:"#a855f7", sparkColor:"#a855f7", sparkData:[5,8,12,18,24,32,38] },
-      { icon: MdWarning,        label:"Suspicious Items",   value:1,  sub:"Flagged for review", color:"#f59e0b", sparkColor:"#f59e0b", sparkData:[0,0,1,1,1,1,1] },
-    ],
-    inspector: [
-      { icon: RiMedicineBottleLine,label:"Total Drugs",      value:186,sub:"In system",          color:"#00e5ff", sparkColor:"#00e5ff", sparkData:[140,150,162,170,178,182,186] },
-      { icon: MdWarning,           label:"Risk Alerts",      value:7,  sub:"High priority",      color:"#f59e0b", sparkColor:"#f59e0b", sparkData:[2,3,4,5,6,7,7] },
-      { icon: RiFileWarningLine,   label:"Anomalies Found",  value:4,  sub:"Needs inspection",   color:"#ef4444", sparkColor:"#ef4444", sparkData:[1,1,2,3,3,4,4] },
-      { icon: MdVerifiedUser,      label:"Verified Today",   value:12, sub:"Inspections done",   color:"#22c55e", sparkColor:"#22c55e", sparkData:[3,5,7,8,9,11,12] },
-    ],
-  };
-  const list = cards[role] ?? cards.manufacturer;
-  return (
-    <div className={`grid gap-4 ${list.length === 5 ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-5" : "grid-cols-2 sm:grid-cols-2 xl:grid-cols-4"}`}>
-      {list.map((m, i) => <MetricCard key={m.label} {...m} delay={i * 0.07} />)}
-    </div>
-  );
-};
 
-// ════════════════════════════════════════════════════════
-// ROLE VIEWS
-// ════════════════════════════════════════════════════════
 
-// ─── Manufacturer ─────────────────────────────────────────
-const ManufacturerView = ({drugs,handleViewDetails,handleShowQR,handleVerifyDrug,handleTransferDrug}) => (
-  <div className="flex flex-col gap-6">
-    {/* Registered Drugs table */}
-    <TableCard title="Registered Drugs" action="View All">
-      {/* desktop table */}
-      <table className="w-full hidden md:table">
-        <thead>
-          <tr className="border-b border-white/6">
-            <TH>Drug Name</TH><TH>Batch Number</TH><TH>Expiry Date</TH>
-            <TH>Quantity</TH><TH>Status</TH><TH>Blockchain</TH>
-            <TH>Risk Score</TH><TH>Actions</TH>
-          </tr>
-        </thead>
-        <tbody>
-          {drugs.map((d) => (
-            <TR key={d._id}>
-              <TD>
-                <div className="flex items-center gap-2.5">
-                  <DrugIcon />
-                  <div>
-                    <p className="text-sm font-semibold text-white">{d.name}</p>
-                    <p className="text-[11px] text-gray-600">{d.type}</p>
-                  </div>
-                </div>
-              </TD>
-              <TD><span className="font-mono text-xs text-gray-400">{d.batchNumber}</span></TD>
-              <TD><span className="text-xs">{new Date(d.expiryDate).toLocaleDateString()}</span></TD>
-              <TD><span className="text-xs">{`${d.quantity} Units`}</span></TD>
-              <TD><StatusBadge label={d.currentStage} /></TD>
-              <TD><BlockchainBadge status={d.isBlockchainVerified?"Verified":"Pending"} /></TD>
-              <TD><RiskPill  score={0} label="Low"/></TD>
-   
-              <TD>
-                <div className="flex gap-1.5 flex-wrap">
-                  <ActionBtn icon={MdVerifiedUser} label="Verify" color="cyan" onClick={()=>handleVerifyDrug(d)} />
-                  <ActionBtn icon={BiTransfer} label="Transfer" color="purple" onClick={()=>handleTransferDrug(d)} />
-                  <ActionBtn icon={MdQrCode2} label="QR Code" color="green" onClick={()=>handleShowQR(d)} />
-                  <ActionBtn icon={MdInfo} label="Details" color="amber" onClick={()=>handleViewDetails(d)}/>
-                </div>
-              </TD>
-            </TR>
-          ))}
-        </tbody>
-      </table>
-      {/* mobile cards */}
-      <div className="md:hidden divide-y divide-white/5">
-        {drugs.map((d) => (
-          <div key={d._id} className="p-4 space-y-2">
-            <div className="flex items-center gap-2.5">
-              <DrugIcon />
-              <div>
-                <p className="text-sm font-semibold text-white">{d.name}</p>
-                <p className="text-[11px] text-gray-600">{d.type} · {d.batchNumber}</p>
-              </div>
-              <StatusBadge label={d.currentStage} />
-            </div>
-            <div className="flex gap-1 flex-wrap">
-              <ActionBtn icon={MdVerifiedUser} label="Verify" color="cyan" onClick={()=>handleVerifyDrug(d)} />
-              <ActionBtn icon={BiTransfer} label="Transfer" color="purple" onClick={()=>handleTransferDrug(d)} />
-              <ActionBtn icon={MdQrCode2} label="QR Code" color="green" onClick={()=>handleShowQR(d)} />
-              <ActionBtn icon={MdInfo} label="Details" color="amber" onClick={()=>handleViewDetails(d)}/>
-            </div>
-          </div>
-        ))}
-      </div>
-    </TableCard>
-
-    {/* Recent Activity + Quick Actions */}
-    <div className="grid lg:grid-cols-2 gap-5">
-      {/* Recent Activity */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
-        className="rounded-2xl border border-cyan-500/10 bg-[#060f1e]/90 backdrop-blur-xl overflow-hidden"
-      >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-cyan-500/10">
-          <h2 className="text-base font-bold text-cyan-400">Recent Activity</h2>
-          <button className="text-xs text-cyan-300 border border-cyan-400/20 rounded-lg px-2.5 py-1 hover:bg-cyan-400/8 transition-all">
-            View All
-          </button>
-        </div>
-        <div className="divide-y divide-white/5">
-          {ACTIVITY.map((a, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 + i * 0.06 }}
-              className="flex items-start gap-3 px-5 py-3.5 hover:bg-white/2 transition-colors"
-            >
-              <span className={`mt-0.5 shrink-0 ${a.color}`}>{a.icon}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-gray-300 leading-relaxed">{a.msg}</p>
-                <p className="text-[10px] text-gray-600 mt-0.5">{a.time}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-base font-bold text-cyan-400 mb-4 px-1">Quick Actions</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <QuickCard icon={MdVerifiedUser}  label="Drug Verification"  sub="Verify drug authenticity"   color="cyan"   delay={0.1} />
-          <QuickCard icon={BiTransfer}      label="Transfer Ownership" sub="Transfer to next entity"     color="amber"  delay={0.15} />
-          <QuickCard icon={MdQrCode2}       label="Generate QR Code"   sub="Generate drug QR"            color="purple" delay={0.2} />
-          <QuickCard icon={BiNetworkChart}  label="AI Risk Analysis"   sub="Analyze drug risk"           color="green"  delay={0.25} />
-          <QuickCard icon={MdBarChart}      label="View Reports"       sub="View analytics & reports"    color="blue"   delay={0.3} />
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-// ─── Inspector ────────────────────────────────────────────
-// ─── Inspector ────────────────────────────────────────────
-const InspectorView = ({
-   drugs,
-   handleVerifyDrug,
-   handleViewDetails
-}) => (
-
-<div className="flex flex-col gap-6">
-
-   <TableCard
-      title="Drug Verification Queue"
-      action="View All"
-   >
-
-      <table className="w-full hidden md:table">
-
-         <thead>
-
-            <tr className="border-b border-white/6">
-
-               <TH>Drug</TH>
-
-               <TH>Manufacturer</TH>
-
-               <TH>Risk Score</TH>
-
-               <TH>Anomaly Status</TH>
-
-               <TH>Blockchain Verified</TH>
-
-               <TH>Action</TH>
-
-            </tr>
-
-         </thead>
-
-         <tbody>
-
-            {drugs.map((d) => (
-
-               <TR key={d._id}>
-
-                  <TD>
-
-                     <div className="
-                        flex items-center gap-2.5
-                     ">
-
-                        <DrugIcon />
-
-                        <p className="
-                           text-sm font-semibold text-white
-                        ">
-                           {d.name}
-                        </p>
-
-                     </div>
-
-                  </TD>
-
-                  <TD>
-
-                     <span className="
-                        text-xs text-gray-400
-                     ">
-
-                        {
-                        d.manufacturer?.name ||
-                        "Unknown"
-                        }
-
-                     </span>
-
-                  </TD>
-
-                  <TD>
-
-                     <RiskPill
-                        score={
-                           d.latestRiskScore || 0
-                        }
-                        label={
-                           d.latestRiskScore > 70
-                           ? "High"
-                           : d.latestRiskScore > 30
-                           ? "Medium"
-                           : "Low"
-                        }
-                     />
-
-                  </TD>
-
-                  <TD>
-
-                     <StatusBadge
-                        label={
-                           d.hasAnomaly
-                           ? "Anomaly"
-                           : "Normal"
-                        }
-                     />
-
-                  </TD>
-
-                  <TD>
-
-                     <BlockchainBadge
-                        status={
-                           d.isBlockchainVerified
-                           ? "Verified"
-                           : "Pending"
-                        }
-                     />
-
-                  </TD>
-
-                  <TD>
-
-                     <div className="
-                        flex gap-1.5 flex-wrap
-                     ">
-
-                        <ActionBtn
-                           icon={MdVerifiedUser}
-                           label="Verify"
-                           color="cyan"
-                           onClick={() =>
-                              handleVerifyDrug(d)
-                           }
-                        />
-
-                        <ActionBtn
-                           icon={MdInfo}
-                           label="Details"
-                           color="amber"
-                           onClick={() =>
-                              handleViewDetails(d)
-                           }
-                        />
-
-                     </div>
-
-                  </TD>
-
-               </TR>
-
-            ))}
-
-         </tbody>
-
-      </table>
-
-      {/* mobile */}
-      <div className="
-         md:hidden divide-y divide-white/5
-      ">
-
-         {drugs.map((d) => (
-
-            <div
-               key={d._id}
-               className="p-4 space-y-2"
-            >
-
-               <div className="
-                  flex items-center gap-2.5 flex-wrap
-               ">
-
-                  <DrugIcon />
-
-                  <p className="
-                     text-sm font-semibold text-white
-                  ">
-                     {d.name}
-                  </p>
-
-                  <StatusBadge
-                     label={
-                        d.hasAnomaly
-                        ? "Anomaly"
-                        : "Normal"
-                     }
-                  />
-
-                  <RiskPill
-                     score={
-                        d.latestRiskScore || 0
-                     }
-                     label={
-                        d.latestRiskScore > 70
-                        ? "High"
-                        : d.latestRiskScore > 30
-                        ? "Medium"
-                        : "Low"
-                     }
-                  />
-
-               </div>
-
-               <div className="
-                  flex gap-1.5
-               ">
-
-                  <ActionBtn
-                     icon={MdVerifiedUser}
-                     label="Verify"
-                     color="cyan"
-                     onClick={() =>
-                        handleVerifyDrug(d)
-                     }
-                  />
-
-                  <ActionBtn
-                     icon={MdInfo}
-                     label="Details"
-                     color="amber"
-                     onClick={() =>
-                        handleViewDetails(d)
-                     }
-                  />
-
-               </div>
-
-            </div>
-
-         ))}
-
-      </div>
-
-   </TableCard>
-
-   {/* Quick Actions */}
-   <div>
-
-      <h2 className="
-         text-base font-bold
-         text-cyan-400 mb-4 px-1
-      ">
-         Quick Actions
-      </h2>
-
-      <div className="
-         grid grid-cols-2 sm:grid-cols-4 gap-3
-      ">
-
-         <QuickCard
-            icon={MdVerifiedUser}
-            label="Verify Drug"
-            sub="Run on-chain check"
-            color="cyan"
-            delay={0.1}
-         />
-
-         <QuickCard
-            icon={BiNetworkChart}
-            label="Analyze Risk"
-            sub="AI anomaly detection"
-            color="amber"
-            delay={0.15}
-         />
-
-         <QuickCard
-            icon={MdDescription}
-            label="Inspection Report"
-            sub="Generate PDF report"
-            color="purple"
-            delay={0.2}
-         />
-
-         <QuickCard
-            icon={FaCube}
-            label="Blockchain Audit"
-            sub="Full chain audit trail"
-            color="green"
-            delay={0.25}
-         />
-
-      </div>
-
-   </div>
-
-</div>
-);
-
-
-
-// ─── Distributor ──────────────────────────────────────────
-const DistributorView = ({
-   drugs,
-   handleViewDetails,
-   handleVerifyDrug,
-   handleTransferDrug
-}) => (
-
-<div className="flex flex-col gap-6">
-
-   <TableCard
-      title="Shipment Tracking"
-      action="View All"
-   >
-
-      <table className="w-full hidden md:table">
-
-         <thead>
-
-            <tr className="border-b border-white/6">
-
-               <TH>Shipment ID</TH>
-
-               <TH>Drug</TH>
-
-               <TH>Manufacturer</TH>
-
-               <TH>Quantity</TH>
-
-               <TH>Status</TH>
-
-               <TH>Expiry</TH>
-
-               <TH>Actions</TH>
-
-            </tr>
-
-         </thead>
-
-         <tbody>
-
-            {drugs.map((d) => (
-
-               <TR key={d._id}>
-
-                  <TD>
-
-                     <span className="
-                        font-mono text-xs text-cyan-400
-                     ">
-                        {d.drugId}
-                     </span>
-
-                  </TD>
-
-                  <TD>
-
-                     <div className="
-                        flex items-center gap-2.5
-                     ">
-
-                        <DrugIcon />
-
-                        <p className="
-                           text-sm font-semibold text-white
-                        ">
-                           {d.name}
-                        </p>
-
-                     </div>
-
-                  </TD>
-
-                  <TD>
-
-                     <span className="
-                        text-xs text-gray-400
-                     ">
-
-                        {
-                        d.manufacturer?.name ||
-                        "Unknown"
-                        }
-
-                     </span>
-
-                  </TD>
-
-                  <TD>
-
-                     <span className="text-xs">
-
-                        {`${d.quantity} Units`}
-
-                     </span>
-
-                  </TD>
-
-                  <TD>
-
-                     <StatusBadge
-                        label={d.currentStage}
-                     />
-
-                  </TD>
-
-                  <TD>
-
-                     <span className="
-                        text-xs text-gray-400
-                     ">
-
-                        {
-                        new Date(
-                           d.expiryDate
-                        ).toLocaleDateString()
-                        }
-
-                     </span>
-
-                  </TD>
-
-                  <TD>
-
-                     <div className="
-                        flex gap-1.5 flex-wrap
-                     ">
-
-                        <ActionBtn
-                           icon={MdVerifiedUser}
-                           label="Verify"
-                           color="cyan"
-                           onClick={() =>
-                              handleVerifyDrug(d)
-                           }
-                        />
-
-                        <ActionBtn
-                           icon={BiTransfer}
-                           label="Transfer"
-                           color="purple"
-                           onClick={() =>
-                              handleTransferDrug(d)
-                           }
-                        />
-
-                        <ActionBtn
-                           icon={MdInfo}
-                           label="Details"
-                           color="amber"
-                           onClick={() =>
-                              handleViewDetails(d)
-                           }
-                        />
-
-                     </div>
-
-                  </TD>
-
-               </TR>
-
-            ))}
-
-         </tbody>
-
-      </table>
-
-      {/* mobile */}
-      <div className="
-         md:hidden divide-y divide-white/5
-      ">
-
-         {drugs.map((d) => (
-
-            <div
-               key={d._id}
-               className="p-4 space-y-2"
-            >
-
-               <div className="
-                  flex items-center gap-2.5 flex-wrap
-               ">
-
-                  <DrugIcon />
-
-                  <div>
-
-                     <p className="
-                        text-sm font-semibold text-white
-                     ">
-                        {d.name}
-                     </p>
-
-                     <p className="
-                        text-[11px] text-gray-600
-                     ">
-                        {d.drugId}
-                     </p>
-
-                  </div>
-
-                  <StatusBadge
-                     label={d.currentStage}
-                  />
-
-               </div>
-
-               <div className="
-                  flex gap-1.5 flex-wrap
-               ">
-
-                  <ActionBtn
-                     icon={MdVerifiedUser}
-                     label="Verify"
-                     color="cyan"
-                     onClick={() =>
-                        handleVerifyDrug(d)
-                     }
-                  />
-
-                  <ActionBtn
-                     icon={BiTransfer}
-                     label="Transfer"
-                     color="purple"
-                     onClick={() =>
-                        handleTransferDrug(d)
-                     }
-                  />
-
-                  <ActionBtn
-                     icon={MdInfo}
-                     label="Details"
-                     color="amber"
-                     onClick={() =>
-                        handleViewDetails(d)
-                     }
-                  />
-
-               </div>
-
-            </div>
-
-         ))}
-
-      </div>
-
-   </TableCard>
-
-   {/* Quick Actions */}
-   <div>
-
-      <h2 className="
-         text-base font-bold
-         text-cyan-400 mb-4 px-1
-      ">
-         Quick Actions
-      </h2>
-
-      <div className="
-         grid grid-cols-2 sm:grid-cols-4 gap-3
-      ">
-
-         <QuickCard
-            icon={MdCheckCircle}
-            label="Accept Transfer"
-            sub="Receive drug shipment"
-            color="green"
-            delay={0.1}
-         />
-
-         <QuickCard
-            icon={MdLocalShipping}
-            label="Update Shipment"
-            sub="Track delivery status"
-            color="cyan"
-            delay={0.15}
-         />
-
-         <QuickCard
-            icon={BiTransfer}
-            label="Transfer Next"
-            sub="Forward to retailer"
-            color="purple"
-            delay={0.2}
-         />
-
-         <QuickCard
-            icon={FaCube}
-            label="Blockchain History"
-            sub="View on-chain records"
-            color="blue"
-            delay={0.25}
-         />
-
-      </div>
-
-   </div>
-
-</div>
-);
-
-
-
-// ─── Retailer ─────────────────────────────────────────────
-const RetailerView = ({
-   drugs,
-   handleVerifyDrug,
-   handleViewDetails
-}) => (
-
-<div className="flex flex-col gap-6">
-
-   <TableCard
-      title="Available Stock"
-      action="View All"
-   >
-
-      <table className="w-full hidden md:table">
-
-         <thead>
-
-            <tr className="border-b border-white/6">
-
-               <TH>Medicine</TH>
-
-               <TH>Batch</TH>
-
-               <TH>Stock</TH>
-
-               <TH>Verified</TH>
-
-               <TH>Status</TH>
-
-               <TH>Actions</TH>
-
-            </tr>
-
-         </thead>
-
-         <tbody>
-
-            {drugs.map((d) => (
-
-               <TR key={d._id}>
-
-                  <TD>
-
-                     <div className="
-                        flex items-center gap-2.5
-                     ">
-
-                        <DrugIcon />
-
-                        <p className="
-                           text-sm font-semibold text-white
-                        ">
-                           {d.name}
-                        </p>
-
-                     </div>
-
-                  </TD>
-
-                  <TD>
-
-                     <span className="
-                        font-mono text-xs text-gray-400
-                     ">
-                        {d.batchNumber}
-                     </span>
-
-                  </TD>
-
-                  <TD>
-
-                     <span className="text-xs">
-
-                        {`${d.quantity} Units`}
-
-                     </span>
-
-                  </TD>
-
-                  <TD>
-
-                     <BlockchainBadge
-                        status={
-                           d.isBlockchainVerified
-                           ? "Verified"
-                           : "Pending"
-                        }
-                     />
-
-                  </TD>
-
-                  <TD>
-
-                     <StatusBadge
-                        label={d.currentStage}
-                     />
-
-                  </TD>
-
-                  <TD>
-
-                     <div className="
-                        flex gap-1.5 flex-wrap
-                     ">
-
-                        <ActionBtn
-                           icon={MdVerifiedUser}
-                           label="Verify"
-                           color="cyan"
-                           onClick={() =>
-                              handleVerifyDrug(d)
-                           }
-                        />
-
-                        <ActionBtn
-                           icon={MdInfo}
-                           label="Details"
-                           color="amber"
-                           onClick={() =>
-                              handleViewDetails(d)
-                           }
-                        />
-
-                     </div>
-
-                  </TD>
-
-               </TR>
-
-            ))}
-
-         </tbody>
-
-      </table>
-
-      {/* mobile */}
-      <div className="
-         md:hidden divide-y divide-white/5
-      ">
-
-         {drugs.map((d) => (
-
-            <div
-               key={d._id}
-               className="p-4 space-y-2"
-            >
-
-               <div className="
-                  flex items-center gap-2.5 flex-wrap
-               ">
-
-                  <DrugIcon />
-
-                  <div>
-
-                     <p className="
-                        text-sm font-semibold text-white
-                     ">
-                        {d.name}
-                     </p>
-
-                     <p className="
-                        text-[11px] text-gray-600
-                     ">
-                        {d.batchNumber}
-                     </p>
-
-                  </div>
-
-                  <StatusBadge
-                     label={d.currentStage}
-                  />
-
-               </div>
-
-               <div className="
-                  flex gap-1.5 flex-wrap
-               ">
-
-                  <ActionBtn
-                     icon={MdVerifiedUser}
-                     label="Verify"
-                     color="cyan"
-                     onClick={() =>
-                        handleVerifyDrug(d)
-                     }
-                  />
-
-                  <ActionBtn
-                     icon={MdInfo}
-                     label="Details"
-                     color="amber"
-                     onClick={() =>
-                        handleViewDetails(d)
-                     }
-                  />
-
-               </div>
-
-            </div>
-
-         ))}
-
-      </div>
-
-   </TableCard>
-
-   {/* Quick Actions */}
-   <div>
-
-      <h2 className="
-         text-base font-bold
-         text-cyan-400 mb-4 px-1
-      ">
-         Quick Actions
-      </h2>
-
-      <div className="
-         grid grid-cols-2 sm:grid-cols-4 gap-3
-      ">
-
-         <QuickCard
-            icon={MdVerifiedUser}
-            label="Verify Drug"
-            sub="Authenticate medicine"
-            color="cyan"
-            delay={0.1}
-         />
-
-         <QuickCard
-            icon={MdQrCode2}
-            label="Scan QR"
-            sub="Camera QR scan"
-            color="purple"
-            delay={0.15}
-         />
-
-         <QuickCard
-            icon={FaCube}
-            label="Supply Chain"
-            sub="View full journey"
-            color="green"
-            delay={0.2}
-         />
-
-         <QuickCard
-            icon={MdWarning}
-            label="Report Suspicious"
-            sub="Flag counterfeit product"
-            color="amber"
-            delay={0.25}
-         />
-
-      </div>
-
-   </div>
-
-</div>
-);
 const InfoCard = ({
    label,
    value
@@ -1782,10 +679,7 @@ async (e) => {
    }
 };
 
-const isDrugExpired = (date) => {
 
-   return new Date(date) < new Date();
-};
 
 
   useEffect(() => {
@@ -1891,12 +785,192 @@ const isDrugExpired = (date) => {
 
   useEffect(() => {
 
-   if(verificationResult){
+   if(
+      verificationResult &&
+      showVerifyModal
+   ){
 
       setShowVerificationResult(true);
    }
 
-}, [verificationResult]);
+}, [verificationResult, showVerifyModal]);
+
+const roleMetrics = {
+
+   manufacturer: [
+
+      {
+         title: "TOTAL DRUGS REGISTERED",
+         value: drugs.length,
+         subtitle: "All time",
+         icon: MdMedication,
+         color: "purple",
+      },
+
+      {
+         title: "BLOCKCHAIN VERIFIED",
+         value: drugs.filter(
+            d => d.isBlockchainVerified
+         ).length,
+         subtitle: "Verified",
+         icon: MdVerifiedUser,
+         color: "cyan",
+      },
+
+      {
+         title: "TRANSFERRED",
+         value: drugs.filter(
+            d => d.currentStage !== "manufactured"
+         ).length,
+         subtitle: "Supply chain moved",
+         icon: BiTransfer,
+         color: "green",
+      },
+
+      {
+         title: "RISK ALERTS",
+         value: drugs.filter(
+            d => d.hasAnomaly
+         ).length,
+         subtitle: "Requires attention",
+         icon: MdWarning,
+         color: "amber",
+      },
+
+      {
+         title: "ACTIVE SHIPMENTS",
+         value: drugs.filter(
+            d => d.currentStage === "in_transit"
+         ).length,
+         subtitle: "In transit",
+         icon: FaCube,
+         color: "blue",
+      },
+   ],
+
+   distributor: [
+
+      {
+         title: "SHIPMENTS",
+         value: drugs.length,
+         subtitle: "Managed shipments",
+         icon: MdLocalShipping,
+         color: "cyan",
+      },
+
+      {
+         title: "TRANSFERRED",
+         value: drugs.filter(
+            d => d.currentStage === "at_retailer"
+         ).length,
+         subtitle: "Delivered",
+         icon: BiTransfer,
+         color: "green",
+      },
+
+      {
+         title: "BLOCKCHAIN VERIFIED",
+         value: drugs.filter(
+            d => d.isBlockchainVerified
+         ).length,
+         subtitle: "Verified",
+         icon: MdVerifiedUser,
+         color: "purple",
+      },
+
+      {
+         title: "RISK ALERTS",
+         value: drugs.filter(
+            d => d.hasAnomaly
+         ).length,
+         subtitle: "Flagged",
+         icon: MdWarning,
+         color: "amber",
+      },
+   ],
+
+   retailer: [
+
+      {
+         title: "AVAILABLE STOCK",
+         value: drugs.length,
+         subtitle: "Inventory",
+         icon: MdInventory,
+         color: "green",
+      },
+
+      {
+         title: "VERIFIED",
+         value: drugs.filter(
+            d => d.isBlockchainVerified
+         ).length,
+         subtitle: "Authentic",
+         icon: MdVerifiedUser,
+         color: "cyan",
+      },
+
+      {
+         title: "QR VERIFIED",
+         value: drugs.filter(
+            d => d.qrCodeData
+         ).length,
+         subtitle: "QR secured",
+         icon: MdQrCode2,
+         color: "purple",
+      },
+
+      {
+         title: "SUSPICIOUS",
+         value: drugs.filter(
+            d => d.hasAnomaly
+         ).length,
+         subtitle: "Flagged",
+         icon: MdWarning,
+         color: "amber",
+      },
+   ],
+
+   inspector: [
+
+      {
+         title: "INSPECTED DRUGS",
+         value: drugs.length,
+         subtitle: "Audit queue",
+         icon: MdFactCheck,
+         color: "cyan",
+      },
+
+      {
+         title: "HIGH RISK",
+         value: drugs.filter(
+            d => d.latestRiskScore > 70
+         ).length,
+         subtitle: "AI flagged",
+         icon: MdWarning,
+         color: "amber",
+      },
+
+      {
+         title: "BLOCKCHAIN VERIFIED",
+         value: drugs.filter(
+            d => d.isBlockchainVerified
+         ).length,
+         subtitle: "Validated",
+         icon: MdVerifiedUser,
+         color: "green",
+      },
+
+      {
+         title: "ANOMALIES",
+         value: drugs.filter(
+            d => d.hasAnomaly
+         ).length,
+         subtitle: "Requires investigation",
+         icon: BiNetworkChart,
+         color: "purple",
+      },
+   ],
+};
 
   const roleViews = {
     manufacturer: <ManufacturerView drugs={drugs} handleViewDetails={handleViewDetails} handleShowQR={handleShowQR} handleVerifyDrug={handleVerifyDrug} handleTransferDrug={handleTransferDrug} />,
@@ -1960,8 +1034,11 @@ const isDrugExpired = (date) => {
         />
 
         {/* Metrics */}
-        <MetricsStrip role={role} />
-
+      <MetricsStrip
+        metrics={
+            roleMetrics[role] || []
+        }
+      />
         {/* Role-specific content */}
         <AnimatePresence mode="wait">
           <motion.div
@@ -1977,525 +1054,70 @@ const isDrugExpired = (date) => {
 
       </div>
     </div>
-    {
-    showDetailsModal && selectedDrug && (
 
-    <div className="
-    fixed inset-0 z-50
-    flex items-center justify-center
-    bg-black/70 backdrop-blur-sm
-    px-4
-    ">
+    <DrugDetailsModal
 
-      <div className="
-          relative
-          w-full max-w-3xl
-          rounded-3xl
-          border border-cyan-500/20
-          bg-[#07111f]
-          p-6
-          shadow-[0_0_60px_rgba(0,229,255,0.15)]
-      ">
-
-          {/* close button */}
-          <button
-            onClick={() =>
-                setShowDetailsModal(false)
-            }
-            className="
-                absolute top-4 right-4
-                text-gray-400 hover:text-white
-                text-xl
-            "
-          >
-            ✕
-          </button>
-
-          {/* heading */}
-          <h2 className="
-            text-2xl font-bold
-            text-white mb-6
-          ">
-            Drug Details
-          </h2>
-
-          {/* grid */}
-          <div className="
-            grid md:grid-cols-2 gap-5
-          ">
-
-            <InfoCard
-                label="Drug Name"
-                value={selectedDrug.name}
-            />
-
-            <InfoCard
-                label="Drug ID"
-                value={selectedDrug.drugId}
-            />
-
-            <InfoCard
-                label="Serialized ID"
-                value={selectedDrug.serializedId}
-            />
-
-            <InfoCard
-                label="Batch Number"
-                value={selectedDrug.batchNumber}
-            />
-
-            <InfoCard
-                label="Quantity"
-                value={`${selectedDrug.quantity} Units`}
-            />
-
-            <InfoCard
-                label="Current Stage"
-                value={selectedDrug.currentStage}
-            />
-
-            <InfoCard
-                label="Blockchain Status"
-                value={
-                  selectedDrug.isBlockchainVerified
-                      ? "Verified"
-                      : "Pending"
-                }
-            />
-
-            <InfoCard
-                label="Expiry Date"
-                value={
-                  new Date(
-                      selectedDrug.expiryDate
-                  ).toLocaleDateString()
-                }
-            />
-
-          </div>
-
-          {/* description */}
-          <div className="mt-5">
-
-            <p className="
-                text-sm text-cyan-400 mb-2
-            ">
-                Description
-            </p>
-
-            <div className="
-                rounded-2xl
-                border border-white/10
-                bg-white/5
-                p-4 text-gray-300
-            ">
-                {selectedDrug.description}
-            </div>
-
-          </div>
-
-          {/* blockchain hash */}
-          <div className="mt-5">
-
-            <p className="
-                text-sm text-cyan-400 mb-2
-            ">
-                Blockchain Transaction Hash
-            </p>
-
-            <div className="
-                rounded-2xl
-                border border-cyan-500/10
-                bg-black/40
-                p-4
-                text-xs text-cyan-300
-                break-all
-            ">
-                {selectedDrug.blockchainTxHash}
-            </div>
-
-          </div>
-
-      </div>
-
-    </div>
-
-    )
-    }
-    {
-    showQRModal && selectedQRDrug && (
-
-    <div className="
-    fixed inset-0 z-50
-    flex items-center justify-center
-    bg-black/70 backdrop-blur-sm
-    px-4
-    ">
-
-      <div className="
-          relative
-          w-full max-w-md
-          rounded-3xl
-          border border-cyan-500/20
-          bg-[#07111f]
-          p-6
-          shadow-[0_0_60px_rgba(0,229,255,0.15)]
-      ">
-
-          {/* close */}
-          <button
-            onClick={() =>
-                setShowQRModal(false)
-            }
-            className="
-                absolute top-4 right-4
-                text-gray-400 hover:text-white
-                text-xl
-            "
-          >
-            ✕
-          </button>
-
-          {/* title */}
-          <h2 className="
-            text-2xl font-bold
-            text-center text-white mb-6
-          ">
-            Blockchain QR Code
-          </h2>
-
-          {/* qr image */}
-          <div className="
-            flex justify-center mb-6
-          ">
-
-            <div className="
-                bg-white
-                p-4 rounded-2xl
-            ">
-
-                <img
-                  src={
-                      selectedQRDrug.qrCodeImage
-                  }
-                  alt="QR"
-                  className="
-                      w-56 h-56
-                      object-contain
-                  "
-                />
-
-            </div>
-
-          </div>
-
-          {/* info */}
-          <div className="
-            space-y-4
-          ">
-
-            <InfoCard
-                label="Drug Name"
-                value={selectedQRDrug.name}
-            />
-
-            <InfoCard
-                label="Drug ID"
-                value={selectedQRDrug.drugId}
-            />
-
-            <InfoCard
-                label="Serialized ID"
-                value={selectedQRDrug.serializedId}
-            />
-
-          </div>
-
-          {/* blockchain verified */}
-          <div className="
-            mt-5
-            rounded-2xl
-            border border-green-500/20
-            bg-green-500/10
-            p-4 text-center
-          ">
-
-            <p className="
-                text-green-400
-                font-semibold
-            ">
-                Blockchain Verified
-            </p>
-
-          </div>
-
-          {/* download button */}
-          <a
-            href={
-                selectedQRDrug.qrCodeImage
-            }
-            download={`${selectedQRDrug.drugId}.png`}
-            className="
-                mt-5 flex items-center
-                justify-center
-                rounded-xl
-                border border-cyan-500/20
-                bg-cyan-500/10
-                py-3 text-cyan-300
-                font-semibold
-                hover:bg-cyan-500/20
-                transition-all
-            "
-          >
-            Download QR Code
-          </a>
-
-      </div>
-
-    </div>
-
-    )
+    showDetailsModal={
+        showDetailsModal
     }
 
-    {
-    showVerifyModal && selectedVerifyDrug && (
-
-    <div className="
-    fixed inset-0 z-50
-    flex items-center justify-center
-    bg-black/70 backdrop-blur-sm
-    px-4
-    ">
-
-      <div className="
-          relative
-          w-full max-w-lg
-          rounded-3xl
-          border border-cyan-500/20
-          bg-[#07111f]
-          p-6
-          shadow-[0_0_60px_rgba(0,229,255,0.15)]
-      ">
-
-          {/* close */}
-          <button
-            onClick={() => {
-
-                setShowVerifyModal(false);
-
-                setScannerOpen(false);
-            }}
-
-            className="
-                absolute top-4 right-4
-                text-gray-400 hover:text-white
-                text-xl
-            "
-          >
-            ✕
-          </button>
-
-          {/* title */}
-          <h2 className="
-            text-2xl font-bold
-            text-white text-center mb-2
-          ">
-            Verify Drug
-          </h2>
-
-          <p className="
-            text-center text-gray-400
-            text-sm mb-8
-          ">
-            Scan or upload QR code
-            to verify blockchain authenticity
-          </p>
-
-          {/* options */}
-          <div className="
-            grid sm:grid-cols-2 gap-5
-          ">
-
-            {/* scan */}
-            <motion.button
-
-              onClick={() =>
-                  setScannerOpen(true)
-              }
-
-              whileHover={{ scale: 1.03 }}
-
-              whileTap={{ scale: 0.97 }}
-
-              className="
-                  rounded-2xl
-                  border border-cyan-500/20
-                  bg-cyan-500/10
-                  p-6
-                  flex flex-col items-center
-                  justify-center gap-3
-                  hover:bg-cyan-500/20
-                  transition-all
-              "
-            >
-
-                <MdQrCodeScanner
-                  size={42}
-                  className="text-cyan-400"
-                />
-
-                <div>
-
-                  <p className="
-                      text-white font-semibold
-                  ">
-                      Scan QR Code
-                  </p>
-
-                  <p className="
-                      text-xs text-gray-400 mt-1
-                  ">
-                      Use camera scanner
-                  </p>
-
-                </div>
-
-            </motion.button>
-
-            {/* upload */}
-            <motion.label
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className="
-                  cursor-pointer
-                  rounded-2xl
-                  border border-purple-500/20
-                  bg-purple-500/10
-                  p-6
-                  flex flex-col items-center
-                  justify-center gap-3
-                  hover:bg-purple-500/20
-                  transition-all
-                "
-            >
-
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleQRImageUpload}
-                />
-
-                <MdCloudUpload
-                  size={42}
-                  className="text-purple-400"
-                />
-
-                <div>
-
-                  <p className="
-                      text-white font-semibold
-                  ">
-                      Upload QR Image
-                  </p>
-
-                  <p className="
-                      text-xs text-gray-400 mt-1
-                  ">
-                      JPG, PNG, WEBP
-                  </p>
-
-                </div>
-
-            </motion.label>
-
-          </div>
-
-
-
-          {/* scanner container */}
-          {
-          scannerOpen && (
-
-          <div className="
-            mt-6
-            rounded-2xl
-            overflow-hidden
-            border border-cyan-500/20
-            bg-black
-            p-3
-          ">
-
-            <div id="reader" />
-
-          </div>
-
-          )
-          }
-
-
-
-          {/* hidden image reader */}
-          <div
-            id="image-reader"
-            className="hidden"
-          />
-
-
-
-          {/* drug info */}
-          <div className="
-            mt-8 rounded-2xl
-            border border-white/10
-            bg-white/5
-            p-4
-          ">
-
-            <p className="
-                text-xs text-cyan-400 mb-2
-            ">
-                Selected Drug
-            </p>
-
-            <div className="
-                flex items-center justify-between
-            ">
-
-                <div>
-
-                  <p className="
-                      text-white font-semibold
-                  ">
-                      {selectedVerifyDrug.name}
-                  </p>
-
-                  <p className="
-                      text-xs text-gray-400 mt-1
-                  ">
-                      {selectedVerifyDrug.drugId}
-                  </p>
-
-                </div>
-
-                <div className="
-                  px-3 py-1 rounded-full
-                  bg-green-500/10
-                  border border-green-500/20
-                  text-green-400 text-xs
-                ">
-                  Blockchain Registered
-                </div>
-
-            </div>
-
-          </div>
-
-      </div>
-
-    </div>
-
-    )
+    selectedDrug={
+        selectedDrug
     }
+
+    setShowDetailsModal={
+        setShowDetailsModal
+    }
+
+    />
+    
+    <QRCodeModal
+
+      showQRModal={
+          showQRModal
+      }
+
+      selectedQRDrug={
+          selectedQRDrug
+      }
+
+      setShowQRModal={
+          setShowQRModal
+      }
+
+    />
+
+    <VerifyDrugModal
+
+      showVerifyModal={
+          showVerifyModal
+      }
+
+      selectedVerifyDrug={
+          selectedVerifyDrug
+      }
+
+      setShowVerifyModal={
+          setShowVerifyModal
+      }
+
+      scannerOpen={
+          scannerOpen
+      }
+
+      setScannerOpen={
+          setScannerOpen
+      }
+
+      handleQRImageUpload={
+          handleQRImageUpload
+      }
+
+      setShowVerificationResult={
+          setShowVerificationResult
+      }
+
+    />
 
     {
     verificationLoading && (
@@ -2697,1354 +1319,105 @@ const isDrugExpired = (date) => {
     )
     }
 
-    {
-    invalidQRMessage && (
+    <InvalidQRModal
 
-    <div className="
-    fixed inset-0 z-[80]
-    flex items-center justify-center
-    bg-black/80 backdrop-blur-sm
-    px-4
-    ">
+      invalidQRMessage={
+          invalidQRMessage
+      }
 
-      <div className="
-          relative
-          w-full max-w-md
-          rounded-3xl
-          border border-red-500/20
-          bg-[#120b0b]
-          p-7
-          shadow-[0_0_70px_rgba(239,68,68,0.18)]
-          overflow-hidden
-      ">
+      setInvalidQRMessage={
+          setInvalidQRMessage
+      }
 
-          {/* glow */}
-          <div className="
-            absolute inset-0
-            bg-[radial-gradient(circle_at_top,rgba(239,68,68,0.15),transparent_45%)]
-          " />
+    />
 
-          {/* close */}
-          <button
-            onClick={() =>
-                setInvalidQRMessage("")
-            }
-            className="
-                absolute top-4 right-4
-                text-gray-400 hover:text-white
-                text-xl z-10
-            "
-          >
-            ✕
-          </button>
+    <VerificationResultModal
 
-          <div className="
-            relative z-10
-            flex flex-col items-center
-            text-center
-          ">
+      showVerificationResult={
+          showVerificationResult
+      }
 
-            {/* icon */}
-            <div className="
-                w-24 h-24
-                rounded-full
-                bg-red-500/10
-                border border-red-500/20
-                flex items-center justify-center
-                mb-6
-            ">
+      setShowVerificationResult={
+          setShowVerificationResult
+      }
 
-                <MdDangerous
-                  size={50}
-                  className="text-red-400"
-                />
+      verificationResult={
+          verificationResult
+      }
 
-            </div>
+    />
 
-            {/* title */}
-            <h2 className="
-                text-3xl font-bold
-                text-red-400
-            ">
-                Verification Failed
-            </h2>
+    <TransferModal
 
-            {/* message */}
-            <p className="
-                mt-4
-                text-gray-300
-                leading-relaxed
-            ">
-                {invalidQRMessage}
-            </p>
+      showTransferModal={
+          showTransferModal
+      }
 
-            {/* warning box */}
-            <div className="
-                mt-6
-                rounded-2xl
-                border border-red-500/20
-                bg-red-500/5
-                p-4
-                text-sm text-red-200
-            ">
+      setShowTransferModal={
+          setShowTransferModal
+      }
 
-                This QR code may be invalid,
-                tampered with, or not registered
-                in the pharmaceutical blockchain
-                verification system.
+      selectedTransferDrug={
+          selectedTransferDrug
+      }
 
-            </div>
+      transferForm={
+          transferForm
+      }
 
-            {/* button */}
-            <button
-                onClick={() =>
-                  setInvalidQRMessage("")
-                }
-                className="
-                  mt-7
-                  rounded-xl
-                  bg-red-500/20
-                  border border-red-500/20
-                  px-6 py-3
-                  text-red-300
-                  font-semibold
-                  hover:bg-red-500/30
-                  transition-all
-                "
-            >
-                Close Warning
-            </button>
+      handleTransferInput={
+          handleTransferInput
+      }
 
-          </div>
+      setShowTransferConfirm={
+          setShowTransferConfirm
+      }
 
-      </div>
+    />
 
-    </div>
+   <TransferConfirmModal
 
-    )
-    }
+      showTransferConfirm={
+         showTransferConfirm
+      }
 
-    {
-    showVerificationResult &&
-    verificationResult && (
+      setShowTransferConfirm={
+         setShowTransferConfirm
+      }
 
-    <div className="
-    fixed inset-0 z-[60]
-    flex items-center justify-center
-    bg-black/80 backdrop-blur-sm
-    px-4
-    ">
+      selectedTransferDrug={
+         selectedTransferDrug
+      }
 
-      <div className="
-          relative
-          w-full max-w-3xl
-          rounded-3xl
-          border border-cyan-500/20
-          bg-[#07111f]
-          p-6
-          shadow-[0_0_70px_rgba(0,229,255,0.18)]
-          overflow-hidden
-      ">
+      handleConfirmTransfer={
+         handleConfirmTransfer
+      }
 
-          {/* glow */}
-          <div className="
-            absolute inset-0
-            bg-[radial-gradient(circle_at_top_right,rgba(0,229,255,0.12),transparent_40%)]
-            pointer-events-none
-          " />
+   />
 
-          {/* close */}
-          <button
-            onClick={() =>
-                setShowVerificationResult(false)
-            }
-            className="
-                absolute top-4 right-4
-                text-gray-400 hover:text-white
-                text-xl z-10
-            "
-          >
-            ✕
-          </button>
+    <BlockchainProcessingModal
 
-          {/* status */}
-          <div className="
-            flex flex-col items-center
-            text-center
-            mb-8
-          ">
+         blockchainProcessing={
+            blockchainProcessing
+         }
 
-            {
-            verificationResult.isAuthentic ? (
-
-            <>
-
-                <div className="
-                  w-24 h-24 rounded-full
-                  flex items-center justify-center
-                  bg-green-500/10
-                  border border-green-500/20
-                  mb-4
-                ">
-
-                  <MdVerifiedUser
-                      size={50}
-                      className="text-green-400"
-                  />
-
-                </div>
-
-                <h2 className="
-                  text-3xl font-bold
-                  text-green-400
-                ">
-                  Authentic Drug
-                </h2>
-
-                <p className="
-                  text-gray-400 mt-2
-                ">
-                  Blockchain verification successful
-                </p>
-
-            </>
-
-            ) : (
-
-            <>
-
-                <div className="
-                  w-24 h-24 rounded-full
-                  flex items-center justify-center
-                  bg-red-500/10
-                  border border-red-500/20
-                  mb-4
-                ">
-
-                  <MdDangerous
-                      size={50}
-                      className="text-red-400"
-                  />
-
-                </div>
-
-                <h2 className="
-                  text-3xl font-bold
-                  text-red-400
-                ">
-                  Fake / Invalid Drug
-                </h2>
-
-                <p className="
-                  text-gray-400 mt-2
-                ">
-                  Drug not found in blockchain
-                </p>
-
-            </>
-
-            )
-            }
-
-          </div>
-
-          {/* details */}
-          {
-          verificationResult.drug && (
-
-          <>
-          {
-            isDrugExpired(
-              verificationResult.drug.expiryDate
-            ) && (
-
-          <div className="
-            md:col-span-2
-            rounded-2xl
-            border border-red-500/20
-            bg-red-500/10
-            p-5
-            flex items-center gap-4
-          ">
-
-            <div className="
-                w-14 h-14
-                rounded-full
-                bg-red-500/10
-                flex items-center justify-center
-                shrink-0
-            ">
-
-                <MdDangerous
-                  size={32}
-                  className="text-red-400"
-                />
-
-            </div>
-
-            <div>
-
-                <h3 className="
-                  text-red-400
-                  text-lg font-bold
-                ">
-                  Expired Drug Warning
-                </h3>
-
-                <p className="
-                  text-gray-300 mt-1
-                ">
-                  This pharmaceutical product
-                  has expired and should not
-                  be consumed or distributed.
-                </p>
-
-            </div>
-
-          </div>
-
-          )
-          }
-          <div className="
-            grid md:grid-cols-2 gap-5
-          ">
-
-            <InfoCard
-                label="Drug Name"
-                value={
-                  verificationResult.drug.name
-                }
-            />
-
-            <InfoCard
-                label="Drug ID"
-                value={
-                  verificationResult.drug.drugId
-                }
-            />
-
-            <InfoCard
-                label="Batch Number"
-                value={
-                  verificationResult.drug.batchNumber
-                }
-            />
-
-            <InfoCard
-                label="Current Stage"
-                value={
-                  verificationResult.drug.currentStage
-                }
-            />
-
-            <InfoCard
-                label="Current Owner"
-                value={
-                  verificationResult.drug.currentOwner?.organizationName ||
-
-                  verificationResult.drug.currentOwner?.name
-                }
-            />
-
-            <InfoCard
-                label="Expiry Date"
-                value={
-                  new Date(
-                      verificationResult.drug.expiryDate
-                  ).toLocaleDateString()
-                }
-            />
-
-          </div>
-          </>
-
-          )
-          }
-
-          {/* blockchain */}
-          <div className="
-            mt-6 rounded-2xl
-            border border-cyan-500/20
-            bg-cyan-500/5
-            p-5
-          ">
-
-            <div className="
-                flex items-center justify-between
-            ">
-
-                <div>
-
-                  <p className="
-                      text-sm text-cyan-400
-                  ">
-                      Blockchain Status
-                  </p>
-
-                  <p className="
-                      text-white font-semibold mt-1
-                  ">
-                      {
-                      verificationResult.isBlockchainVerified
-
-                        ? "Verified On Blockchain"
-
-                        : "Not Verified"
-                      }
-                  </p>
-
-                </div>
-
-                <div className="
-                  px-4 py-2 rounded-full
-                  bg-green-500/10
-                  border border-green-500/20
-                  text-green-400 text-sm
-                ">
-                  Secure
-                </div>
-
-            </div>
-
-          </div>
-
-          {/* risk */}
-          <div className="
-            mt-5 grid md:grid-cols-2 gap-5
-          ">
-
-            <div className="
-                rounded-2xl
-                border border-purple-500/20
-                bg-purple-500/5
-                p-5
-            ">
-
-                <p className="
-                  text-sm text-purple-400
-                ">
-                  AI Risk Score
-                </p>
-
-                <h3 className="
-                  text-4xl font-bold
-                  text-white mt-2
-                ">
-                  {
-                  verificationResult.drug?.latestRiskScore || 0
-                  }%
-                </h3>
-
-            </div>
-
-            <div className="
-                rounded-2xl
-                border border-amber-500/20
-                bg-amber-500/5
-                p-5
-            ">
-
-                <p className="
-                  text-sm text-amber-400
-                ">
-                  Anomaly Detection
-                </p>
-
-                <h3 className="
-                  text-xl font-bold
-                  mt-3
-                  text-white
-                ">
-                  {
-                  verificationResult.drug?.hasAnomaly
-
-                  ? "Suspicious Activity"
-
-                  : "No Anomalies"
-                  }
-                </h3>
-
-            </div>
-
-          </div>
-
-      </div>
-
-    </div>
-
-    )
-    }
-
-    {
-   showTransferModal &&
-   selectedTransferDrug && (
-
-    <div className="
-    fixed inset-0 z-[70]
-    flex items-center justify-center
-    bg-black/80 backdrop-blur-sm
-    px-4
-    ">
-
-      <div className="
-          relative
-          w-full max-w-2xl
-          rounded-3xl
-          border border-purple-500/20
-          bg-[#07111f]
-          p-6
-          shadow-[0_0_70px_rgba(168,85,247,0.18)]
-          overflow-hidden
-      ">
-
-          {/* glow */}
-          <div className="
-            absolute inset-0
-            bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.15),transparent_45%)]
-          " />
-
-          {/* close */}
-          <button
-            onClick={() =>
-                setShowTransferModal(false)
-            }
-
-            className="
-                absolute top-4 right-4
-                text-gray-400 hover:text-white
-                text-xl z-10
-            "
-          >
-            ✕
-          </button>
-
-          <div className="
-            relative z-10
-          ">
-
-            {/* title */}
-            <div className="
-                flex items-center gap-3 mb-8
-            ">
-
-                <div className="
-                  w-14 h-14 rounded-2xl
-                  bg-purple-500/10
-                  border border-purple-500/20
-                  flex items-center justify-center
-                ">
-
-                  <BiTransfer
-                      size={30}
-                      className="text-purple-400"
-                  />
-
-                </div>
-
-                <div>
-
-                  <h2 className="
-                      text-3xl font-bold
-                      text-white
-                  ">
-                      Transfer Ownership
-                  </h2>
-
-                  <p className="
-                      text-gray-400 mt-1
-                  ">
-                      Blockchain-secured drug transfer
-                  </p>
-
-                </div>
-
-            </div>
-
-            {/* drug info */}
-            <div className="
-                rounded-2xl
-                border border-white/10
-                bg-white/5
-                p-5
-                mb-6
-            ">
-
-                <div className="
-                  flex items-center justify-between
-                ">
-
-                  <div>
-
-                      <p className="
-                        text-sm text-purple-400
-                      ">
-                        Selected Drug
-                      </p>
-
-                      <h3 className="
-                        text-xl font-bold
-                        text-white mt-2
-                      ">
-                        {selectedTransferDrug.name}
-                      </h3>
-
-                      <p className="
-                        text-gray-400 mt-1
-                      ">
-                        {
-                        selectedTransferDrug.drugId
-                        }
-                      </p>
-
-                  </div>
-
-                  <div className="
-                      px-4 py-2 rounded-full
-                      bg-green-500/10
-                      border border-green-500/20
-                      text-green-400 text-sm
-                  ">
-                      Blockchain Active
-                  </div>
-
-                </div>
-
-            </div>
-
-            {/* form */}
-            <div className="
-                space-y-5
-            ">
-
-                {/* recipient */}
-                <div>
-
-                  <label className="
-                      block text-sm text-gray-300 mb-2
-                  ">
-                      Recipient Email
-                  </label>
-
-                  <input
-                      type="email"
-
-                      name="toUserEmail"
-
-                      value={
-                        transferForm.toUserEmail
-                      }
-
-                      onChange={
-                        handleTransferInput
-                      }
-
-                      placeholder="
-                      Enter recipient email
-                      "
-
-                      className="
-                        w-full
-                        rounded-2xl
-                        border border-purple-500/20
-                        bg-[#0b1628]
-                        px-5 py-4
-                        text-white
-                        outline-none
-                        focus:border-purple-400
-                        transition-all
-                      "
-                  />
-
-                </div>
-
-                {/* blockchain animation */}
-                <div className="
-                  rounded-2xl
-                  border border-purple-500/20
-                  bg-purple-500/5
-                  p-5
-                ">
-
-                  <div className="
-                      flex items-center justify-between
-                  ">
-
-                      <div className="
-                        flex items-center gap-4
-                      ">
-
-                        <div className="
-                            w-12 h-12 rounded-full
-                            bg-cyan-500/10
-                            flex items-center justify-center
-                        ">
-
-                            <MdVerifiedUser
-                              size={24}
-                              className="text-cyan-400"
-                            />
-
-                        </div>
-
-                        <motion.div
-
-                            animate={{
-                              x: [0, 10, 0]
-                            }}
-
-                            transition={{
-                              duration: 1.5,
-                              repeat: Infinity
-                            }}
-
-                        >
-
-                            <BiTransfer
-                              size={28}
-                              className="text-purple-400"
-                            />
-
-                        </motion.div>
-
-                        <div className="
-                            w-12 h-12 rounded-full
-                            bg-green-500/10
-                            flex items-center justify-center
-                        ">
-
-                            <MdOutlineInventory2
-                              size={24}
-                              className="text-green-400"
-                            />
-
-                        </div>
-
-                      </div>
-
-                      <div className="
-                        text-right
-                      ">
-
-                        <p className="
-                            text-sm text-purple-300
-                        ">
-                            Smart Contract
-                        </p>
-
-                        <p className="
-                            text-xs text-gray-400 mt-1
-                        ">
-                            Ownership transfer
-                            will be recorded
-                            on blockchain
-                        </p>
-
-                      </div>
-
-                  </div>
-
-                </div>
-
-                {/* buttons */}
-                <div className="
-                  flex justify-end gap-4 pt-4
-                ">
-
-                  <button
-
-                      onClick={() =>
-                        setShowTransferModal(false)
-                      }
-
-                      className="
-                        px-6 py-3 rounded-xl
-                        border border-white/10
-                        text-gray-300
-                        hover:bg-white/5
-                        transition-all
-                      "
-                  >
-                      Cancel
-                  </button>
-
-                  <button
-
-                      onClick={()=>setShowTransferConfirm(true)}
-                      className="
-                        px-6 py-3 rounded-xl
-                        bg-purple-500/20
-                        border border-purple-500/20
-                        text-purple-300
-                        font-semibold
-                        hover:bg-purple-500/30
-                        transition-all
-                      "
-                  >
-                      Confirm Transfer
-                  </button>
-
-                </div>
-
-            </div>
-
-          </div>
-
-      </div>
-
-    </div>
-
-    )
-    }
-
-    {
-    showTransferConfirm && (
-
-    <div className="
-    fixed inset-0 z-[90]
-    flex items-center justify-center
-    bg-black/80 backdrop-blur-sm
-    px-4
-    ">
-
-      <div className="
-          w-full max-w-md
-          rounded-3xl
-          border border-purple-500/20
-          bg-[#07111f]
-          p-7
-          shadow-[0_0_60px_rgba(168,85,247,0.2)]
-      ">
-
-          <div className="
-            flex flex-col items-center
-            text-center
-          ">
-
-            <div className="
-                w-24 h-24
-                rounded-full
-                bg-purple-500/10
-                border border-purple-500/20
-                flex items-center justify-center
-                mb-6
-            ">
-
-                <BiTransfer
-                  size={48}
-                  className="text-purple-400"
-                />
-
-            </div>
-
-            <h2 className="
-                text-3xl font-bold
-                text-white
-            ">
-                Confirm Transfer
-            </h2>
-
-            <p className="
-                text-gray-400 mt-4 leading-relaxed
-            ">
-                You are about to transfer
-                ownership of this drug
-                on the blockchain network.
-            </p>
-
-            <div className="
-                mt-6
-                rounded-2xl
-                border border-white/10
-                bg-white/5
-                p-4
-                w-full text-left
-            ">
-
-                <p className="
-                  text-sm text-purple-300
-                ">
-                  Drug
-                </p>
-
-                <p className="
-                  text-white font-semibold mt-1
-                ">
-                  {selectedTransferDrug?.name}
-                </p>
-
-                <p className="
-                  text-gray-400 text-sm mt-1
-                ">
-                  {
-                  selectedTransferDrug?.drugId
-                  }
-                </p>
-
-            </div>
-
-            <div className="
-                flex gap-4 mt-8 w-full
-            ">
-
-                <button
-
-                  onClick={() =>
-                      setShowTransferConfirm(false)
-                  }
-
-                  className="
-                      flex-1
-                      py-3 rounded-xl
-                      border border-white/10
-                      text-gray-300
-                      hover:bg-white/5
-                      transition-all
-                  "
-                >
-                  Cancel
-                </button>
-
-                <button
-
-                  onClick={
-                      handleConfirmTransfer
-                  }
-
-                  className="
-                      flex-1
-                      py-3 rounded-xl
-                      bg-purple-500/20
-                      border border-purple-500/20
-                      text-purple-300
-                      font-semibold
-                      hover:bg-purple-500/30
-                      transition-all
-                  "
-                >
-                  Yes, Transfer
-                </button>
-
-            </div>
-
-          </div>
-
-      </div>
-
-    </div>
-
-    )
-    }
-
-    {
-    blockchainProcessing && (
-
-    <div className="
-    fixed inset-0 z-[100]
-    flex items-center justify-center
-    bg-[#020817]/95
-    backdrop-blur-md
-    overflow-hidden
-    ">
-
-      {/* animated background */}
-      <div className="
-          absolute inset-0
-          bg-[radial-gradient(circle_at_center,rgba(139,92,246,0.15),transparent_45%)]
-      " />
-
-      {/* floating glow */}
-      <motion.div
-
-          animate={{
-            scale: [1, 1.3, 1],
-            opacity: [0.3, 0.6, 0.3]
-          }}
-
-          transition={{
-            duration: 3,
-            repeat: Infinity
-          }}
-
-          className="
-            absolute
-            w-[500px] h-[500px]
-            rounded-full
-            bg-purple-500/10
-            blur-3xl
-          "
       />
 
-      <div className="
-          relative z-10
-          flex flex-col items-center
-          text-center
-          px-6
-      ">
+    <TransferSuccessModal
 
-          {/* blockchain circles */}
-          <div className="
-            relative
-            flex items-center justify-center
-            mb-10
-          ">
+      transferSuccessData={
+          transferSuccessData
+      }
 
-            {/* left node */}
-            <motion.div
+      setTransferSuccessData={
+          setTransferSuccessData
+      }
 
-                animate={{
-                  y: [0, -12, 0]
-                }}
+      downloadTransferReceipt={
+          downloadTransferReceipt
+      }
 
-                transition={{
-                  duration: 2,
-                  repeat: Infinity
-                }}
-
-                className="
-                  w-24 h-24
-                  rounded-3xl
-                  border border-cyan-500/30
-                  bg-cyan-500/10
-                  flex items-center justify-center
-                  shadow-[0_0_30px_rgba(0,229,255,0.3)]
-                "
-            >
-
-                <MdVerifiedUser
-                  size={44}
-                  className="text-cyan-400"
-                />
-
-            </motion.div>
-
-            {/* transfer animation */}
-            <motion.div
-
-                animate={{
-                  x: [0, 25, 0]
-                }}
-
-                transition={{
-                  duration: 1.5,
-                  repeat: Infinity
-                }}
-
-                className="mx-8"
-            >
-
-                <BiTransfer
-                  size={42}
-                  className="text-purple-400"
-                />
-
-            </motion.div>
-
-            {/* right node */}
-            <motion.div
-
-                animate={{
-                  y: [0, 12, 0]
-                }}
-
-                transition={{
-                  duration: 2,
-                  repeat: Infinity
-                }}
-
-                className="
-                  w-24 h-24
-                  rounded-3xl
-                  border border-green-500/30
-                  bg-green-500/10
-                  flex items-center justify-center
-                  shadow-[0_0_30px_rgba(34,197,94,0.3)]
-                "
-            >
-
-                <MdOutlineInventory2
-                  size={44}
-                  className="text-green-400"
-                />
-
-            </motion.div>
-
-          </div>
-
-          {/* title */}
-          <h2 className="
-            text-4xl font-black
-            text-white
-          ">
-            Blockchain Processing
-          </h2>
-
-          <p className="
-            mt-4
-            text-lg text-gray-400
-            max-w-xl
-            leading-relaxed
-          ">
-            Smart contract ownership transfer
-            is being securely processed
-            on the blockchain network.
-          </p>
-
-          {/* stages */}
-          <div className="
-            mt-12
-            grid gap-5
-            w-full max-w-lg
-          ">
-
-            {
-            [
-                "Validating ownership",
-                "Executing smart contract",
-                "Mining blockchain transaction",
-                "Updating pharmaceutical ledger",
-                "Generating immutable audit log"
-            ].map((step, index) => (
-
-                <motion.div
-
-                  key={index}
-
-                  initial={{
-                      opacity: 0,
-                      x: -20
-                  }}
-
-                  animate={{
-                      opacity: 1,
-                      x: 0
-                  }}
-
-                  transition={{
-                      delay: index * 0.4
-                  }}
-
-                  className="
-                      flex items-center gap-4
-                      rounded-2xl
-                      border border-white/10
-                      bg-white/5
-                      px-5 py-4
-                  "
-                >
-
-                  <motion.div
-
-                      animate={{
-                        scale: [1, 1.3, 1]
-                      }}
-
-                      transition={{
-                        duration: 1.5,
-                        repeat: Infinity
-                      }}
-
-                      className="
-                        w-3 h-3
-                        rounded-full
-                        bg-purple-400
-                      "
-                  />
-
-                  <p className="
-                      text-gray-200
-                  ">
-                      {step}
-                  </p>
-
-                </motion.div>
-
-            ))
-            }
-
-          </div>
-
-          {/* loader */}
-          <motion.div
-
-            animate={{
-                rotate: 360
-            }}
-
-            transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: "linear"
-            }}
-
-            className="
-                mt-10
-                w-16 h-16
-                rounded-full
-                border-4
-                border-purple-500/20
-                border-t-purple-400
-            "
-          />
-
-          {/* footer */}
-          <p className="
-            mt-8
-            text-sm text-gray-500
-          ">
-            Secured by AI + Blockchain Infrastructure
-          </p>
-
-      </div>
-
-    </div>
-
-    )
-    }
-
-    {
-    transferSuccessData && (
-
-    <div className="
-    fixed inset-0 z-[95]
-    flex items-center justify-center
-    bg-black/80 backdrop-blur-sm
-    px-4
-    ">
-
-      <div className="
-          w-full max-w-lg
-          rounded-3xl
-          border border-green-500/20
-          bg-[#07111f]
-          p-8
-          shadow-[0_0_70px_rgba(34,197,94,0.18)]
-      ">
-
-          <div className="
-            flex flex-col items-center
-            text-center
-          ">
-
-            {/* icon */}
-            <div className="
-                w-28 h-28
-                rounded-full
-                bg-green-500/10
-                border border-green-500/20
-                flex items-center justify-center
-                mb-6
-            ">
-
-                <MdCheckCircle
-                  size={60}
-                  className="text-green-400"
-                />
-
-            </div>
-
-            {/* title */}
-            <h2 className="
-                text-3xl font-bold
-                text-white
-            ">
-                Transfer Successful
-            </h2>
-
-            <p className="
-                mt-4 text-gray-400
-                leading-relaxed
-            ">
-                Drug ownership has been
-                securely transferred and
-                recorded on blockchain.
-            </p>
-
-            {/* tx info */}
-            <div className="
-                mt-6
-                w-full
-                rounded-2xl
-                border border-white/10
-                bg-white/5
-                p-4
-                text-left
-            ">
-
-                <p className="
-                  text-sm text-green-300
-                ">
-                  Blockchain Transaction
-                </p>
-
-                <p className="
-                  mt-2
-                  text-xs text-gray-300
-                  break-all
-                  font-mono
-                ">
-                  {
-                  transferSuccessData
-                  ?.data
-                  ?.drug
-                  ?.blockchainTxHash || "N/A"
-                  }
-                </p>
-
-            </div>
-
-            {/* buttons */}
-            <div className="
-                flex gap-4 mt-8 w-full
-            ">
-
-                <button
-
-                  onClick={() =>
-                      setTransferSuccessData(null)
-                  }
-
-                  className="
-                      flex-1
-                      py-3 rounded-xl
-                      border border-white/10
-                      text-gray-300
-                      hover:bg-white/5
-                      transition-all
-                  "
-                >
-                  Close
-                </button>
-
-                <button
-
-                  onClick={
-                      downloadTransferReceipt
-                  }
-
-                  className="
-                      flex-1
-                      py-3 rounded-xl
-                      bg-green-500/20
-                      border border-green-500/20
-                      text-green-300
-                      font-semibold
-                      hover:bg-green-500/30
-                      transition-all
-                  "
-                >
-                  Download Receipt
-                </button>
-
-            </div>
-
-          </div>
-
-      </div>
-
-    </div>
-
-    )
-    }
+    />
    </Layout>
   );
 }
