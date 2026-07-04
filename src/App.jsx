@@ -7,6 +7,8 @@ import DrugRegistration from './Pages/DrugRegistration'
 import Profile from './Pages/Profile'
 import HowItWorks from './Pages/HowItWorks'
 import VerifyDrugPage from './Pages/VerifyDrugPage'
+import SupplyChainPage from './Pages/SupplyChainPage'
+import Layout from './components/layout/Layout'
 
 
 function App() {
@@ -19,6 +21,7 @@ function App() {
       <Route path='/drug-registration' element={<DrugRegistration/>}/>
       <Route path='/profile' element={<Profile/>}/>
       <Route path='/verify-drug' element={<VerifyDrugPage/>}/>
+      <Route path="/supply-chain" element={<Layout><SupplyChainPage /></Layout>} />
 
 
 
