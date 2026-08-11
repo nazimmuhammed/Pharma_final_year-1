@@ -84,6 +84,7 @@ import RetailerView from
 "../components/profile/views/RetailerView";
 import InspectorView from
 "../components/profile/views/InspectorView";
+import { getCurrentLocation } from "../Helpers/locationHelper";
 
 
 // ─── Tiny sparkline ───────────────────────────────────────
@@ -328,10 +329,6 @@ export default function Profile() {
 
         toUserEmail: "",
 
-        location: {
-          latitude: "",
-          longitude: "",
-        }
     });
   const [blockchainProcessing,
   setBlockchainProcessing] =
@@ -402,6 +399,8 @@ async () => {
       setBlockchainProcessing(true);
       
 
+      const location = await getCurrentLocation();
+
       const payload = {
 
          drugId:
@@ -410,10 +409,7 @@ async () => {
          toUserEmail:
             transferForm.toUserEmail,
 
-         location: {
-            latitude: 12.9716,
-            longitude: 77.5946,
-         }
+         location,
       };
 
       const result =
@@ -445,11 +441,6 @@ async () => {
       setTransferForm({
 
          toUserEmail: "",
-
-         location: {
-            latitude: "",
-            longitude: "",
-         }
       });
 
       // refresh drugs
@@ -608,7 +599,8 @@ const downloadTransferReceipt =
   } = useSelector(
     (state) => state.drug
   );
-   const { data, role } = useSelector(
+
+  const { data, role } = useSelector(
   (state) => state.auth
   );
 

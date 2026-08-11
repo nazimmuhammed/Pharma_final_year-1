@@ -9,6 +9,7 @@ import HowItWorks from './Pages/HowItWorks'
 import VerifyDrugPage from './Pages/VerifyDrugPage'
 import SupplyChainPage from './Pages/SupplyChainPage'
 import Layout from './components/layout/Layout'
+import AIRiskAnalysis from './Pages/AIRiskAnalysis'
 
 
 function App() {
@@ -22,7 +23,7 @@ function App() {
       <Route path='/profile' element={<Profile/>}/>
       <Route path='/verify-drug' element={<VerifyDrugPage/>}/>
       <Route path="/supply-chain" element={<Layout><SupplyChainPage /></Layout>} />
-
+      <Route path="/ai-analysis" element={<Layout><AIRiskAnalysis /></Layout>} />
 
 
       <Route path='/how-it-works' element={<HowItWorks/>}/>
