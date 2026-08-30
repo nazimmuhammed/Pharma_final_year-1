@@ -614,24 +614,133 @@ const downloadTransferReceipt =
    (state) => state.drug
 );
 
+/* =========================================================
+   EXTRACT DRUG ID FROM QR DATA
+
+   Handles three possible QR payload formats:
+     1. JSON, e.g. {"drugId": "DRG-123"}
+     2. A plain drug ID string
+     3. A verification URL, e.g. https://.../verify/DRG-123
+========================================================= */
+
+const extractDrugId = (decodedText) => {
+
+   if (!decodedText) {
+      return "";
+   }
+
+   const text = decodedText.trim();
+
+   console.log(
+      "QR decoded text:",
+      text
+   );
+
+   // Case 1: JSON QR
+   try {
+
+      const parsedData =
+         JSON.parse(text);
+
+      if (parsedData?.drugId) {
+
+         return String(
+            parsedData.drugId
+         ).trim();
+
+      }
+
+   } catch (error) {
+
+      console.log(
+         "QR is not JSON."
+      );
+
+   }
+
+   // Case 2: Direct drug ID
+   if (
+      text &&
+      !text.startsWith("http://") &&
+      !text.startsWith("https://")
+   ) {
+
+      return text;
+
+   }
+
+   // Case 3: Verification URL
+   try {
+
+      const url =
+         new URL(text);
+
+      const parts =
+         url.pathname
+            .split("/")
+            .filter(Boolean);
+
+      const verifyIndex =
+         parts.indexOf("verify");
+
+      if (
+         verifyIndex !== -1 &&
+         parts[verifyIndex + 1]
+      ) {
+
+         return parts[
+            verifyIndex + 1
+         ];
+
+      }
+
+   } catch (error) {
+
+      console.log(
+         "Not a valid URL."
+      );
+
+   }
+
+   return "";
+};
+
 const handleQRImageUpload =
 async (e) => {
 
+   const file =
+      e.target.files?.[0];
+
+   // allow re-selecting the same file
+   e.target.value = "";
+
+   if (!file) return;
+
+   let html5QrCode = null;
+
    try {
 
-      const file =
-         e.target.files[0];
+      const container =
+         document.getElementById(
+            "image-reader"
+         );
 
-      if(!file) return;
+      if (!container) {
 
-      const html5QrCode =
+         throw new Error(
+            "QR image reader container not found."
+         );
+
+      }
+
+      html5QrCode =
          new Html5Qrcode("image-reader");
 
       // scan uploaded image
       const decodedText =
          await html5QrCode.scanFile(
             file,
-            true
+            false
          );
 
       console.log(
@@ -639,17 +748,13 @@ async (e) => {
          decodedText
       );
 
-      // parse QR JSON
-      const parsedData =
-         JSON.parse(decodedText);
-
       const drugId =
-         parsedData.drugId;
+         extractDrugId(decodedText);
 
-      if(!drugId){
+      if (!drugId) {
 
         setInvalidQRMessage(
-          "Unable to verify uploaded QR image."
+          "Invalid pharmaceutical QR code. Drug ID was not found."
         );
          return;
       }
@@ -663,11 +768,36 @@ async (e) => {
 
    catch(error){
 
-      console.error(error);
-
-      alert(
-         "Failed to scan QR image"
+      console.error(
+         "QR image scan failed:",
+         error
       );
+
+      setInvalidQRMessage(
+         error?.message ||
+         "Unable to scan the uploaded QR image. Please upload a clear QR code."
+      );
+   }
+
+   finally {
+
+      if (html5QrCode) {
+
+         try {
+
+            await html5QrCode.clear();
+
+         } catch (error) {
+
+            console.log(
+               "QR scanner cleanup:",
+               error
+            );
+
+         }
+
+      }
+
    }
 };
 
@@ -718,18 +848,8 @@ async (e) => {
               decodedText
             );
 
-            // parse QR JSON
-            const parsedData =
-              JSON.parse(decodedText);
-
-            console.log(
-              "Parsed QR:",
-              parsedData
-            );
-
-            // extract drugId
             const drugId =
-              parsedData.drugId;
+              extractDrugId(decodedText);
 
             if(!drugId){
 

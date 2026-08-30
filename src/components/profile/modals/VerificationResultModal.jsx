@@ -192,7 +192,9 @@ export default function VerificationResultModal({
 
                <InfoCard
                   label="Manufacturer"
-                  value={drug.manufacturer}
+                  value={
+                     drug.manufacturer?.name
+                  }
                />
 
                <InfoCard

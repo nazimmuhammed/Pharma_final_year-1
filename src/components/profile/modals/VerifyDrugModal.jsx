@@ -266,6 +266,28 @@ export default function VerifyDrugModal({
 
             </div>
 
+            {/* Hidden QR image-scan container.
+                html5-qrcode's scanFile() needs an element with this
+                id to exist in the DOM to mount into — it was missing
+                entirely before, which made every image upload fail
+                immediately. It also needs a real pixel size (not
+                display:none / 0x0), since scanFile() internally
+                sizes its decode canvas relative to this container's
+                clientWidth/clientHeight. Pushed off-screen so it
+                stays fully invisible without affecting layout. */}
+            <div
+               id="image-reader"
+               style={{
+                  position: "fixed",
+                  top: "-9999px",
+                  left: "-9999px",
+                  width: "300px",
+                  height: "300px",
+                  overflow: "hidden",
+                  pointerEvents: "none",
+               }}
+            />
+
          </div>
 
       </div>
