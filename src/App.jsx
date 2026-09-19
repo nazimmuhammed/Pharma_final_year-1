@@ -1,6 +1,6 @@
 import './App.css'
 import {Routes,Route} from 'react-router-dom'
-import HomePage from './Pages/Homepage'
+import HomePage from "./Pages/HomePage";
 import RegisterPage from './Pages/RegisterPage'
 import LoginPage from './Pages/LoginPage'
 import DrugRegistration from './Pages/DrugRegistration'
