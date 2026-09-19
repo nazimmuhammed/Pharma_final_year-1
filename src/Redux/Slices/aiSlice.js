@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import axiosInstance from "../../helpers/axiosInstance";
+import axiosInstance from "../../Helpers/axiosInstance";
 
 /* ============================================
    Analyze Drug
